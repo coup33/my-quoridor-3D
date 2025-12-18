@@ -72,115 +72,67 @@ function App() {
 
   const isMyTurn = turn === myRole;
 
-  // --- 🔥 [핵심 1] 벽 충돌 감지 로직 (기존 유지) ---
+  // --- 🔥 [이동/벽 로직] (규칙 완벽 적용됨) ---
   const isBlockedByWall = (currentX, currentY, targetX, targetY, currentWalls) => {
-    // 1. 위로 이동 (y가 줄어듦)
-    if (targetY < currentY) {
-      return currentWalls.some(w => w.orientation === 'h' && w.y === targetY && (w.x === currentX || w.x === currentX - 1));
-    }
-    // 2. 아래로 이동 (y가 늘어남)
-    if (targetY > currentY) {
-      return currentWalls.some(w => w.orientation === 'h' && w.y === currentY && (w.x === currentX || w.x === currentX - 1));
-    }
-    // 3. 왼쪽으로 이동 (x가 줄어듦)
-    if (targetX < currentX) {
-      return currentWalls.some(w => w.orientation === 'v' && w.x === targetX && (w.y === currentY || w.y === currentY - 1));
-    }
-    // 4. 오른쪽으로 이동 (x가 늘어남)
-    if (targetX > currentX) {
-      return currentWalls.some(w => w.orientation === 'v' && w.x === currentX && (w.y === currentY || w.y === currentY - 1));
-    }
+    if (targetY < currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === targetY && (w.x === currentX || w.x === currentX - 1));
+    if (targetY > currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === currentY && (w.x === currentX || w.x === currentX - 1));
+    if (targetX < currentX) return currentWalls.some(w => w.orientation === 'v' && w.x === targetX && (w.y === currentY || w.y === currentY - 1));
+    if (targetX > currentX) return currentWalls.some(w => w.orientation === 'v' && w.x === currentX && (w.y === currentY || w.y === currentY - 1));
     return false;
   };
 
-  // --- 🔥 [핵심 2] 한 칸 이동 유효성 검사 (인접 + 벽 없음) ---
   const isValidStep = (x1, y1, x2, y2, currentWalls) => {
-    // 1. 보드 범위 체크
     if (x2 < 0 || x2 > 8 || y2 < 0 || y2 > 8) return false;
-    // 2. 정확히 상하좌우 1칸 차이인지 체크
     if (Math.abs(x1 - x2) + Math.abs(y1 - y2) !== 1) return false;
-    // 3. 벽에 막혀있는지 체크
     return !isBlockedByWall(x1, y1, x2, y2, currentWalls);
   };
 
-  // --- 🔥 [핵심 3] 이동 가능한지 최종 판별 (점프 & 대각선 포함) ---
   const isMoveable = (targetX, targetY) => {
     if (!isGameStarted || !isMyTurn || actionMode !== 'move' || winner) return false;
-    
     const current = turn === 1 ? player1 : player2;
     const opponent = turn === 1 ? player2 : player1;
     
-    // CASE 1: 일반 이동 (상대방이 없는 칸으로 1칸 이동)
-    // 조건: 인접함 + 벽 없음 + 상대방 없음
+    // 1. 일반 이동
     if (isValidStep(current.x, current.y, targetX, targetY, walls)) {
-      if (!(targetX === opponent.x && targetY === opponent.y)) {
-        return true;
-      }
+      if (!(targetX === opponent.x && targetY === opponent.y)) return true;
     }
-
-    // CASE 2: 상대방 뛰어넘기 (Jump) 및 대각선 이동
-    // 조건: 내 바로 옆에 상대방이 있고 + 그 사이가 벽으로 막히지 않아야 함
+    // 2. 점프 & 대각선
     if (isValidStep(current.x, current.y, opponent.x, opponent.y, walls)) {
-      // 상대방과 나의 위치 차이 (방향)
       const dx = opponent.x - current.x;
       const dy = opponent.y - current.y;
-      
-      // 직선 점프 예상 지점
       const jumpX = opponent.x + dx;
       const jumpY = opponent.y + dy;
 
-      // 2-1. 직선 점프 (Straight Jump)
       if (targetX === jumpX && targetY === jumpY) {
-        // 상대방과 점프 지점 사이에 벽이 없어야 함
         return isValidStep(opponent.x, opponent.y, jumpX, jumpY, walls);
       }
-
-      // 2-2. 대각선 이동 (Diagonal Move)
-      // 조건: 목표 지점이 상대방과 인접해야 함 (상대방의 왼쪽 or 오른쪽)
       if (isValidStep(opponent.x, opponent.y, targetX, targetY, walls)) {
-        // 추가 조건: "직선 점프가 불가능할 때"만 대각선 허용
-        // 점프 지점이 맵 밖이거나 OR 상대방과 점프 지점 사이가 벽으로 막혀있을 때
-        const isJumpBlocked = 
-          jumpX < 0 || jumpX > 8 || jumpY < 0 || jumpY > 8 || // 맵 끝
-          isBlockedByWall(opponent.x, opponent.y, jumpX, jumpY, walls); // 벽 막힘
-
+        const isJumpBlocked = jumpX < 0 || jumpX > 8 || jumpY < 0 || jumpY > 8 || isBlockedByWall(opponent.x, opponent.y, jumpX, jumpY, walls);
         if (isJumpBlocked) {
-          // 대각선 위치 확인 (나와 대각선 위치인지)
-          if (Math.abs(targetX - current.x) === 1 && Math.abs(targetY - current.y) === 1) {
-            return true;
-          }
+          if (Math.abs(targetX - current.x) === 1 && Math.abs(targetY - current.y) === 1) return true;
         }
       }
     }
-
     return false;
   };
 
-  // --- 🔥 [핵심 4] 길 찾기 알고리즘 (BFS) ---
   const hasValidPath = (startNode, targetRow, simulatedWalls) => {
     const queue = [startNode]; 
     const visited = new Set();
     visited.add(`${startNode.x},${startNode.y}`);
-
-    const directions = [
-      { dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }
-    ];
+    const directions = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }];
 
     while (queue.length > 0) {
       const { x, y } = queue.shift();
       if (y === targetRow) return true;
-
       for (let dir of directions) {
         const nx = x + dir.dx;
         const ny = y + dir.dy;
-
         if (nx >= 0 && nx < 9 && ny >= 0 && ny < 9) {
           const key = `${nx},${ny}`;
-          if (!visited.has(key)) {
-            if (!isBlockedByWall(x, y, nx, ny, simulatedWalls)) {
-              visited.add(key);
-              queue.push({ x: nx, y: ny });
-            }
+          if (!visited.has(key) && !isBlockedByWall(x, y, nx, ny, simulatedWalls)) {
+            visited.add(key);
+            queue.push({ x: nx, y: ny });
           }
         }
       }
@@ -190,8 +142,6 @@ function App() {
 
   const canPlaceWall = (x, y, orientation) => {
     if (!isGameStarted || !isMyTurn || winner) return false;
-    
-    // 1. 벽 겹침 체크
     const isOverlap = walls.some(w => {
       if (w.x === x && w.y === y && w.orientation === orientation) return true;
       if (w.orientation === orientation) {
@@ -201,15 +151,9 @@ function App() {
       if (w.x === x && w.y === y && w.orientation !== orientation) return true;
       return false;
     });
-
     if (isOverlap) return false;
-
-    // 2. 길 막힘 체크 (Pathfinding)
     const simulatedWalls = [...walls, { x, y, orientation }];
-    const p1Path = hasValidPath({ x: player1.x, y: player1.y }, 8, simulatedWalls);
-    const p2Path = hasValidPath({ x: player2.x, y: player2.y }, 0, simulatedWalls);
-
-    return p1Path && p2Path;
+    return hasValidPath({ x: player1.x, y: player1.y }, 8, simulatedWalls) && hasValidPath({ x: player2.x, y: player2.y }, 0, simulatedWalls);
   };
 
   const handleCellClick = (x, y) => {
@@ -232,11 +176,7 @@ function App() {
     if (!isMyTurn || actionMode !== 'wall') return;
     const current = turn === 1 ? player1 : player2;
     if (current.wallCount <= 0) return;
-    
-    if (!canPlaceWall(x, y, orientation)) {
-        setPreviewWall(null);
-        return; 
-    }
+    if (!canPlaceWall(x, y, orientation)) { setPreviewWall(null); return; }
 
     if (previewWall && previewWall.x === x && previewWall.y === y && previewWall.orientation === orientation) {
       const nextWalls = [...walls, { x, y, orientation }];
@@ -254,31 +194,19 @@ function App() {
     }
   };
 
-  const getVWallStyle = (x, y) => ({
-    left: `calc(${x} * var(--unit) + var(--cell))`,
-    top: `calc(${y} * var(--unit))`
-  });
-
-  const getHWallStyle = (x, y) => ({
-    left: `calc(${x} * var(--unit))`,
-    top: `calc(${y} * var(--unit) + var(--cell))`
-  });
-
+  // 스타일 헬퍼 (기존 유지)
+  const getVWallStyle = (x, y) => ({ left: `calc(${x} * var(--unit) + var(--cell))`, top: `calc(${y} * var(--unit))` });
+  const getHWallStyle = (x, y) => ({ left: `calc(${x} * var(--unit))`, top: `calc(${y} * var(--unit) + var(--cell))` });
   const getPlacedWallStyle = (wall) => {
-    if (wall.orientation === 'v') {
-      return {
-        left: `calc(${wall.x} * var(--unit) + var(--cell))`,
-        top: `calc(${wall.y} * var(--unit))`
-      };
-    } else {
-      return {
-        left: `calc(${wall.x} * var(--unit))`,
-        top: `calc(${wall.y} * var(--unit) + var(--cell))`
-      };
-    }
+    if (wall.orientation === 'v') return { left: `calc(${wall.x} * var(--unit) + var(--cell))`, top: `calc(${wall.y} * var(--unit))` };
+    else return { left: `calc(${wall.x} * var(--unit))`, top: `calc(${wall.y} * var(--unit) + var(--cell))` };
   };
 
+  // --- 🔥 [화면 회전 및 배치 로직] ---
   const isSpectator = isGameStarted && myRole !== 1 && myRole !== 2;
+  
+  // 내가 P1(백색)이면 화면을 180도 뒤집어서 내가 아래에 보이게 함
+  const isFlipped = myRole === 1; 
 
   return (
     <div className="container">
@@ -320,7 +248,16 @@ function App() {
         </header>
 
         <main className="main-content">
-          <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`}>
+          {/* [모바일 배치] order 속성을 동적으로 변경하여
+            '내가 선택한 역할'의 패널이 항상 하단(order: 3)에 오도록 함.
+            상대방 패널은 상단(order: 1)에 위치.
+          */}
+
+          {/* 백색(P1) 패널 */}
+          <aside 
+            className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`}
+            style={{ order: isFlipped ? 3 : 1 }} // P1이면 내꺼니까 하단(3), 아니면 상단(1)
+          >
             <div className="wall-counter white-box">남은 벽: <span className="count">{player1.wallCount}</span></div>
             {myRole === 1 ? (
               <div className="button-group">
@@ -330,18 +267,20 @@ function App() {
             ) : null}
           </aside>
 
-          <section className="board-section">
+          {/* 보드 섹션 */}
+          <section className="board-section" style={{ order: 2 }}>
             <div className="turn-display">
               {winner ? <span className="win-text">승리!</span> : <span className={turn===1?'t-white':'t-black'}>{turn===1?'● 백색 턴':'● 흑색 턴'}</span>}
             </div>
             <div className="board-container">
-              <div className="board">
-                {/*  */}
+              {/* P1(백색)일 때만 보드를 180도 회전시켜서 내 말이 아래에 보이게 함 */}
+              <div className="board" style={{ transform: isFlipped ? 'rotate(180deg)' : 'none' }}>
                 {Array.from({length:81}).map((_,i)=>{
                   const x=i%9, y=Math.floor(i/9);
                   const canMove=isMoveable(x,y);
                   return (
                     <div key={`c-${x}-${y}`} className={`cell ${canMove?'highlight':''}`} onClick={()=>handleCellClick(x,y)}>
+                      {/* 말도 같이 회전되므로 다시 180도 돌릴 필요는 없음 (원은 회전해도 원이니까) */}
                       {player1.x===x&&player1.y===y&&<div className="pawn white-pawn"/>}
                       {player2.x===x&&player2.y===y&&<div className="pawn black-pawn"/>}
                       {canMove&&<div className="move-dot"/>}
@@ -354,26 +293,15 @@ function App() {
                   const isWallMode=actionMode==='wall'&&isMyTurn;
                   const canH=isWallMode&&canPlaceWall(x,y,'h');
                   const canV=isWallMode&&canPlaceWall(x,y,'v');
-                  
                   const isPreviewH = previewWall && previewWall.x===x && previewWall.y===y && previewWall.orientation==='h';
                   const isPreviewV = previewWall && previewWall.x===x && previewWall.y===y && previewWall.orientation==='v';
-
                   return (
                     <React.Fragment key={`wp-${x}-${y}`}>
-                      <div 
-                        className={`wall-target h ${isWallMode?'in-wall-mode':''} ${canH?'placeable':''} ${isPreviewH?'preview':''}`} 
-                        style={getHWallStyle(x,y)} 
-                        onClick={()=>handleWallClick(x,y,'h')}
-                      />
-                      <div 
-                        className={`wall-target v ${isWallMode?'in-wall-mode':''} ${canV?'placeable':''} ${isPreviewV?'preview':''}`} 
-                        style={getVWallStyle(x,y)} 
-                        onClick={()=>handleWallClick(x,y,'v')}
-                      />
+                      <div className={`wall-target h ${isWallMode?'in-wall-mode':''} ${canH?'placeable':''} ${isPreviewH?'preview':''}`} style={getHWallStyle(x,y)} onClick={()=>handleWallClick(x,y,'h')}/>
+                      <div className={`wall-target v ${isWallMode?'in-wall-mode':''} ${canV?'placeable':''} ${isPreviewV?'preview':''}`} style={getVWallStyle(x,y)} onClick={()=>handleWallClick(x,y,'v')}/>
                     </React.Fragment>
                   );
                 })}
-
                 {(walls || []).map((wall,i)=>(
                   <div key={i} className={`placed-wall ${wall.orientation}`} style={getPlacedWallStyle(wall)}/>
                 ))}
@@ -381,7 +309,11 @@ function App() {
             </div>
           </section>
 
-          <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''}`}>
+          {/* 흑색(P2) 패널 */}
+          <aside 
+            className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''}`}
+            style={{ order: isFlipped ? 1 : 3 }} // P1 입장에선 P2가 상단(1), P2 입장에선 내가 하단(3)
+          >
             <div className="wall-counter black-box">남은 벽: <span className="count">{player2.wallCount}</span></div>
             {myRole === 2 ? (
               <div className="button-group">
@@ -390,6 +322,7 @@ function App() {
               </div>
             ) : null}
           </aside>
+
         </main>
         
         {isGameStarted && !isSpectator && <button className="reset-float" onClick={resetGame}>🔄</button>}
