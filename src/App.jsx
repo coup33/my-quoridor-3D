@@ -4,11 +4,10 @@ import './App.css';
 
 const socket = io('https://my-quoridor.onrender.com');
 
-// ★ 타임 바 컴포넌트 (초읽기 바)
-const TimeBar = ({ time, maxTime = 120 }) => {
+// ★ 타임 바 컴포넌트 (maxTime 90초)
+const TimeBar = ({ time, maxTime = 90 }) => {
   const percentage = Math.min(100, Math.max(0, (time / maxTime) * 100));
   
-  // 색상 결정 (30초 미만 노랑, 10초 미만 빨강)
   let statusClass = '';
   if (time < 10) statusClass = 'danger';
   else if (time < 30) statusClass = 'warning';
@@ -19,18 +18,7 @@ const TimeBar = ({ time, maxTime = 120 }) => {
         className={`time-bar-fill ${statusClass}`} 
         style={{ width: `${percentage}%` }}
       />
-      <div className="time-text" style={{ 
-          position: 'absolute', 
-          width: '100%', 
-          textAlign: 'center', 
-          top: '0', 
-          fontSize: '10px', 
-          lineHeight: '12px', 
-          color: 'white', 
-          textShadow: '0 0 2px black' 
-        }}>
-        {time}s
-      </div>
+      <div className="time-text">{time}s</div>
     </div>
   );
 };
@@ -42,9 +30,9 @@ function App() {
     turn: 1,
     walls: [],
     winner: null,
-    // ★ 시간 상태 초기화
-    p1Time: 90,
-    p2Time: 90
+    // ★ 60초 시작
+    p1Time: 60,
+    p2Time: 60
   };
 
   const [player1, setPlayer1] = useState(initialState.p1);
@@ -91,7 +79,6 @@ function App() {
     setTurn(state.turn);
     setWalls(state.walls || []);
     setWinner(state.winner);
-    // ★ 시간 동기화
     setP1Time(state.p1Time);
     setP2Time(state.p2Time);
 
@@ -100,17 +87,22 @@ function App() {
   };
 
   const emitAction = (newState) => {
-    // 클라이언트에서는 시간을 계산하지 않고 서버 상태를 기다림 (단, 반응성을 위해 로컬 state만 살짝 업데이트 가능하나 생략)
     socket.emit('game_action', newState);
   };
 
   const selectRole = (role) => socket.emit('select_role', role);
   const toggleReady = () => myRole && socket.emit('player_ready', myRole);
   const resetGame = () => socket.emit('reset_game');
+  // ★ 기권 함수
+  const resignGame = () => {
+    if(window.confirm("정말 기권하시겠습니까?")) {
+        socket.emit('resign_game');
+    }
+  };
 
   const isMyTurn = turn === myRole;
 
-  // --- 로직 함수들 (이전과 동일) ---
+  // --- 로직 함수들 (기존 유지) ---
   const isBlockedByWall = (currentX, currentY, targetX, targetY, currentWalls) => {
     if (targetY < currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === targetY && (w.x === currentX || w.x === currentX - 1));
     if (targetY > currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === currentY && (w.x === currentX || w.x === currentX - 1));
@@ -197,7 +189,6 @@ function App() {
     if (!isMyTurn) return;
     if (!isMoveable(x, y)) return;
     
-    // 시간 정보는 서버가 계산하므로 로컬에선 생략
     let nextState = { p1: player1, p2: player2, turn: turn === 1 ? 2 : 1, walls, winner: null };
     if (turn === 1) {
       nextState.p1 = { ...player1, x, y };
@@ -231,7 +222,6 @@ function App() {
     }
   };
 
-  // 스타일 헬퍼
   const getVWallStyle = (x, y) => ({ left: `calc(${x} * var(--unit) + var(--cell))`, top: `calc(${y} * var(--unit))` });
   const getHWallStyle = (x, y) => ({ left: `calc(${x} * var(--unit))`, top: `calc(${y} * var(--unit) + var(--cell))` });
   const getPlacedWallStyle = (wall) => {
@@ -241,6 +231,12 @@ function App() {
 
   const isSpectator = isGameStarted && myRole !== 1 && myRole !== 2;
   const isFlipped = myRole === 1; 
+
+  // ★ 상단 시간 / 하단 시간 결정 로직
+  // 뒤집힘(P1): 상단=P2, 하단=P1
+  // 안뒤집힘(P2/관전): 상단=P1, 하단=P2
+  const topTime = isFlipped ? p2Time : p1Time;
+  const bottomTime = isFlipped ? p1Time : p2Time;
 
   return (
     <div className="container">
@@ -282,27 +278,32 @@ function App() {
         </header>
 
         <main className="main-content">
-          {/* 백색(P1) 패널 */}
+          {/* P1 패널 */}
           <aside 
             className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`}
             style={{ order: isFlipped ? 3 : 1 }} 
           >
             <div className="wall-counter white-box">남은 벽: <span className="count">{player1.wallCount}</span></div>
-            {/* ★ P1 초읽기 바 추가 */}
-            <TimeBar time={p1Time} />
             
             {myRole === 1 ? (
               <div className="button-group">
                 <button className={`btn p1-btn ${actionMode==='move'?'selected':''}`} onClick={()=>setActionMode('move')} disabled={!isMyTurn||winner}>이동</button>
                 <button className={`btn p1-btn ${actionMode==='wall'?'selected':''}`} onClick={()=>setActionMode('wall')} disabled={!isMyTurn||winner}>벽</button>
+                {/* ★ P1 항복 버튼 */}
+                <button className="btn btn-resign" onClick={resignGame} disabled={winner}>항복</button>
               </div>
             ) : null}
           </aside>
 
+          {/* ★ 보드 섹션 (시간 바 포함) */}
           <section className="board-section" style={{ order: 2 }}>
             <div className="turn-display">
               {winner ? <span className="win-text">승리!</span> : <span className={turn===1?'t-white':'t-black'}>{turn===1?'● 백색 턴':'● 흑색 턴'}</span>}
             </div>
+
+            {/* ★ 상단 시간 (상대방) */}
+            <TimeBar time={topTime} />
+
             <div className="board-container">
               <div className="board" style={{ transform: isFlipped ? 'rotate(180deg)' : 'none' }}>
                 {Array.from({length:81}).map((_,i)=>{
@@ -335,24 +336,29 @@ function App() {
                 ))}
               </div>
             </div>
+
+            {/* ★ 하단 시간 (나) */}
+            <TimeBar time={bottomTime} />
+
           </section>
 
-          {/* 흑색(P2) 패널 */}
+          {/* P2 패널 */}
           <aside 
             className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''}`}
             style={{ order: isFlipped ? 1 : 3 }} 
           >
             <div className="wall-counter black-box">남은 벽: <span className="count">{player2.wallCount}</span></div>
-            {/* ★ P2 초읽기 바 추가 */}
-            <TimeBar time={p2Time} />
 
             {myRole === 2 ? (
               <div className="button-group">
                 <button className={`btn p2-btn ${actionMode==='move'?'selected':''}`} onClick={()=>setActionMode('move')} disabled={!isMyTurn||winner}>이동</button>
                 <button className={`btn p2-btn ${actionMode==='wall'?'selected':''}`} onClick={()=>setActionMode('wall')} disabled={!isMyTurn||winner}>벽</button>
+                {/* ★ P2 항복 버튼 */}
+                <button className="btn btn-resign" onClick={resignGame} disabled={winner}>항복</button>
               </div>
             ) : null}
           </aside>
+
         </main>
         
         {isGameStarted && !isSpectator && <button className="reset-float" onClick={resetGame}>🔄</button>}

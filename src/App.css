@@ -285,33 +285,56 @@ body {
 .reset-large { margin-top: 15px; padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
 .reset-float { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: #c92a2a; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
 
-/* --- ⏱️ 초읽기 타임 바 스타일 --- */
+
+/* --- ⏱️ 초읽기 타임 바 스타일 (보드 상/하단 배치용) --- */
 .time-bar-wrapper {
-  width: 100%;
-  height: 12px;
-  background-color: #495057; /* 빈 게이지 색상 */
-  border-radius: 6px;
-  margin-top: 8px;
+  /* 보드보다 약간 작게 */
+  width: 95%; 
+  max-width: 480px; /* PC 보드 크기 고려 */
+  height: 8px; /* 얇고 세련되게 */
+  background-color: #343a40;
+  border-radius: 10px;
   overflow: hidden;
   position: relative;
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+  margin: 5px 0; /* 위아래 여백 */
 }
 
 .time-bar-fill {
   height: 100%;
-  background-color: #27ae60; /* 기본 초록색 */
-  width: 0%; /* JS로 제어 */
+  background-color: #27ae60;
+  width: 100%;
   transition: width 0.5s linear, background-color 0.3s;
 }
 
-/* 시간이 얼마 안 남았을 때 색상 변화 */
-.time-bar-fill.warning { background-color: #fcc419; } /* 30초 미만 */
-.time-bar-fill.danger { background-color: #e03131; }  /* 10초 미만 */
+.time-bar-fill.warning { background-color: #fcc419; }
+.time-bar-fill.danger { background-color: #e03131; }
 
+/* 텍스트는 바깥이나 안쪽에 작게 표시 */
 .time-text {
-  font-size: 0.8rem;
-  color: #adb5bd;
-  margin-top: 4px;
-  text-align: right;
-  font-variant-numeric: tabular-nums; /* 숫자 너비 고정 */
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  top: -2px;
+  font-size: 9px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 2px black;
+  z-index: 2;
 }
+
+/* --- 🏳️ 항복 버튼 --- */
+.btn-resign {
+  margin-top: 10px;
+  background-color: #c92a2a; /* 붉은색 */
+  color: white;
+  border: none;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+.btn-resign:hover {
+  background-color: #e03131;
+  opacity: 1;
+}
+
+/* ... 모바일 미디어 쿼리 등 기존 스타일 유지 ... */
