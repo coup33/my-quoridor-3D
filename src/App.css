@@ -1,155 +1,226 @@
-/* --- 로비 시스템 스타일 --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-/* 게임 화면 래퍼 */
+body {
+  font-family: 'Pretendard', sans-serif;
+  background-color: #e9ecef;
+}
+
+.container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 게임 래퍼: 전체 화면을 꽉 채우게 수정 */
 .game-wrapper {
-  transition: filter 0.3s;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
+  transition: filter 0.3s;
 }
 
-/* 로비가 떴을 때 뒤에 있는 게임 화면 흐리게 */
 .game-wrapper.blurred {
   filter: blur(8px);
-  pointer-events: none; /* 뒤쪽 클릭 방지 */
+  pointer-events: none;
 }
 
-/* 로비 오버레이 (화면 전체 덮기) */
-.lobby-overlay {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+.header {
+  height: 60px;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 999; /* 최상단 */
-  background: rgba(0, 0, 0, 0.4); /* 약간 어둡게 */
+  flex-direction: column;
+}
+
+.game-title {
+  font-size: 1.4rem;
+  letter-spacing: 12px;
+  color: #adb5bd;
+  font-weight: 800;
+}
+
+.role-badge {
+  background: #343a40;
+  color: #ffd43b;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  padding-bottom: 20px;
+}
+
+/* 패널 스타일 */
+.side-panel {
+  width: 180px;
+  padding: 20px;
+  border-radius: 20px;
+  text-align: center;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.side-panel.active {
+  border: 2.5px solid #343a40;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.wall-counter {
+  padding: 10px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
+.white-box { background: white; border: 1px solid #ced4da; }
+.black-box { background: #212529; color: white; }
+.count { font-size: 2rem; font-weight: 800; }
+
+.button-group { display: flex; flex-direction: column; gap: 8px; }
+.btn {
+  padding: 10px;
+  border: 2px solid #495057;
+  background: white;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.p1-btn.selected { background: #e9ecef !important; border-style: dashed; }
+.p2-btn.selected { background: #212529 !important; color: white !important; }
+
+/* 보드 영역 */
+.board-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.turn-display {
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  min-height: 35px;
+}
+.t-white { color: #495057; }
+.t-black { color: #212529; }
+.win-text { color: #27ae60; }
+
+.board-container {
+  background: #343a40;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(9, 60px);
+  grid-template-rows: repeat(9, 60px);
+  gap: 8px;
+}
+
+.cell {
+  width: 60px; height: 60px;
+  background: #adb5bd;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+.cell.highlight { background: #ffd43b !important; }
+.move-dot { width: 12px; height: 12px; background: rgba(0,0,0,0.15); border-radius: 50%; }
+
+.pawn { width: 46px; height: 46px; border-radius: 50%; z-index: 5; }
+.white-pawn { background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+.black-pawn { background: #212529; border: 1px solid #495057; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+
+/* 벽 스타일 */
+.wall-target { position: absolute; z-index: 10; background: transparent; pointer-events: none; }
+.wall-target.in-wall-mode { pointer-events: auto; cursor: pointer; }
+.wall-target.placeable:hover { background: rgba(255, 212, 59, 0.5); }
+
+.wall-target.h { width: 128px; height: 12px; }
+.wall-target.v { width: 12px; height: 128px; }
+
+.placed-wall {
+  position: absolute;
+  background: #f8f9fa;
+  border: 1px solid #ced4da;
+  z-index: 20;
+  border-radius: 4px;
+  pointer-events: none;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+.placed-wall.h { width: 128px; height: 12px; }
+.placed-wall.v { width: 12px; height: 128px; }
+
+/* 로비 오버레이 */
+.lobby-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.6);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .lobby-card {
   background: white;
   padding: 40px;
   border-radius: 20px;
-  text-align: center;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
   width: 400px;
-  border: 1px solid #ddd;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
 }
 
-.lobby-title {
-  font-size: 2rem;
-  margin-bottom: 30px;
-  letter-spacing: 5px;
-  color: #333;
-}
+.lobby-title { font-size: 1.8rem; margin-bottom: 20px; color: #333; }
 
-/* 역할 선택 버튼 */
-.role-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-top: 20px;
-}
-
+.role-buttons { display: flex; flex-direction: column; gap: 10px; }
 .role-btn {
-  padding: 20px;
-  border: 2px solid #ccc;
+  padding: 15px;
   border-radius: 10px;
-  font-size: 1.2rem;
+  border: 2px solid #ddd;
+  font-size: 1.1rem;
   font-weight: bold;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  transition: 0.2s;
 }
+.role-btn.white { background: white; color: black; }
+.role-btn.black { background: #333; color: white; }
+.role-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.role-btn.white { background: #fff; color: #333; }
-.role-btn.black { background: #333; color: #fff; }
+.free-badge { background: #27ae60; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
+.taken-badge { background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
 
-.role-btn:hover:not(:disabled) { transform: scale(1.02); }
-
-/* 이미 선택된 버튼 스타일 */
-.role-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: #eee;
-  color: #999;
-  border-color: #eee;
-}
-
-.taken-badge {
-  font-size: 0.8rem;
-  background: #e74c3c;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-/* 대기 화면 */
-.ready-section { margin-top: 20px; }
-.my-role-text { font-size: 1.2rem; margin-bottom: 20px; font-weight: bold; }
-
-.status-box {
-  background: #f8f9fa;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  text-align: left;
-}
-
-.player-status {
-  padding: 8px;
-  border-bottom: 1px solid #eee;
-}
+.status-box { background: #f1f3f5; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left; }
+.player-status { padding: 5px 0; border-bottom: 1px solid #dee2e6; }
 .player-status.ready { color: #27ae60; font-weight: bold; }
 
-.start-btn {
-  width: 100%;
-  padding: 15px;
-  background: #27ae60;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 1.1rem;
-  font-weight: bold;
-  cursor: pointer;
-}
+.start-btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; background: #27ae60; color: white; }
+.start-btn.waiting { background: #f39c12; cursor: wait; }
 
-.start-btn:disabled {
-  background: #bdc3c7;
-  cursor: not-allowed;
-}
+.cancel-btn { width: 100%; margin-top: 10px; padding: 10px; background: #adb5bd; border: none; border-radius: 10px; color: white; cursor: pointer; font-weight: bold; }
 
-.start-btn.waiting {
-  background: #f39c12; /* 대기 중일 때 노란색 */
-}
-
-/* ... 기존 스타일 아래에 추가 ... */
-
-.free-badge {
-  font-size: 0.8rem;
-  background: #27ae60;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.cancel-btn {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  background: #95a5a6;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.cancel-btn:hover { background: #7f8c8d; }
-
-.action-buttons {
-  display: flex;
-  flex-direction: column;
-}
+/* 팝업 */
+.overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 100; }
+.modal { background: white; padding: 40px; border-radius: 20px; text-align: center; }
+.reset-large { margin-top: 20px; padding: 10px 30px; background: #27ae60; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+.reset-float { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: #343a40; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; }
