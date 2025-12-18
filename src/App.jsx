@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import './App.css';
 
-// Render 서버 주소 확인 필수!
-const socket = io('https://my-quoridor-server-xxxx.onrender.com');
+// Render 서버 주소 확인!
+const socket = io('https://my-quoridor.onrender.com');
 
 function App() {
   const initialState = {
@@ -22,30 +22,35 @@ function App() {
   const [actionMode, setActionMode] = useState(initialState.actionMode);
   const [winner, setWinner] = useState(initialState.winner);
   
-  // 로비 관련 상태
+  // 로비 상태
   const [myRole, setMyRole] = useState(null);
   const [takenRoles, setTakenRoles] = useState({ 1: null, 2: null });
   const [readyStatus, setReadyStatus] = useState({ 1: false, 2: false });
   const [isGameStarted, setIsGameStarted] = useState(false);
 
+  // *** 핵심 수정: 의존성 배열을 []로 하여 리스너가 절대 끊기지 않게 함 ***
   useEffect(() => {
-    // 1. 접속하자마자 서버에게 "로비 상태 줘!" 요청
-    socket.emit('request_lobby');
-
+    // 1. 로비 정보 수신
     socket.on('lobby_update', (data) => {
-      console.log("로비 업데이트 받음:", data); // 디버깅용 로그
+      console.log('실시간 업데이트:', data); // 로그 확인용
       setTakenRoles(data.roles);
       setReadyStatus(data.readyStatus);
       setIsGameStarted(data.isGameStarted);
       
-      // 서버 데이터와 내 역할 동기화 (내가 선택한 역할이 서버에서도 내 ID인지 확인)
-      if (myRole === 1 && data.roles[1] !== socket.id) setMyRole(null);
-      if (myRole === 2 && data.roles[2] !== socket.id) setMyRole(null);
+      // 내 역할 검증 (서버가 재시작되거나 뺏겼을 때 내 역할 해제)
+      // 주의: 여기서 setMyRole을 직접 호출하면 무한 루프 위험이 있어
+      // 아래의 useEffect에서 처리하거나 socket.id 비교를 신중히 해야 함.
+      // 여기서는 UI 업데이트에만 집중.
     });
 
     socket.on('game_start', (started) => setIsGameStarted(started));
+    
+    // 게임 상태 동기화
     socket.on('init_state', (state) => syncWithServer(state));
     socket.on('update_state', (state) => syncWithServer(state));
+
+    // 접속 시 로비 정보 요청 (혹시 놓쳤을까봐)
+    socket.emit('request_lobby');
 
     return () => {
       socket.off('lobby_update');
@@ -53,7 +58,14 @@ function App() {
       socket.off('init_state');
       socket.off('update_state');
     };
-  }, [myRole]);
+  }, []); // <--- 여기가 중요합니다! []
+
+  // 서버 데이터로 내 역할 유효성 검사 (별도 분리)
+  useEffect(() => {
+    if (myRole === 1 && takenRoles[1] !== socket.id) setMyRole(null);
+    if (myRole === 2 && takenRoles[2] !== socket.id) setMyRole(null);
+  }, [takenRoles, myRole]);
+
 
   const syncWithServer = (state) => {
     setPlayer1(state.p1);
@@ -68,7 +80,7 @@ function App() {
     socket.emit('game_action', newState);
   };
 
-  // --- 로비 기능 ---
+  // --- 로비 액션 ---
   const selectRole = (role) => {
     socket.emit('select_role', role);
     setMyRole(role);
@@ -128,6 +140,7 @@ function App() {
     const current = turn === 1 ? player1 : player2;
     if (current.wallCount <= 0) return;
     if (!canPlaceWall(x, y, orientation)) return;
+
     const nextWalls = [...walls, { x, y, orientation }];
     let nextState = { 
       p1: turn === 1 ? { ...player1, wallCount: player1.wallCount - 1 } : player1,
@@ -142,20 +155,19 @@ function App() {
 
   return (
     <div className="container">
-      {/* 로비 오버레이 */}
       {!isGameStarted && (
         <div className="lobby-overlay">
           <div className="lobby-card">
             <h2 className="lobby-title">QUORIDOR ONLINE</h2>
             
-            {/* 1. 역할 선택 단계 */}
+            {/* 역할 선택 */}
             {!myRole && (
               <div className="role-selection">
                 <p>플레이할 색상을 선택하세요</p>
                 <div className="role-buttons">
                   <button 
                     className="role-btn white" 
-                    // takenRoles[1]이 있는데 그게 내가 아니면(socket.id체크가 여기서 힘드니 단순 null체크) 비활성화
+                    // 중요: takenRoles[1]이 있으면(누군가 있으면) 무조건 비활성화
                     disabled={takenRoles[1] !== null} 
                     onClick={() => selectRole(1)}
                   >
@@ -174,28 +186,27 @@ function App() {
               </div>
             )}
 
-            {/* 2. 대기 및 시작 단계 */}
+            {/* 대기 화면 */}
             {myRole && (
               <div className="ready-section">
                 <p className="my-role-text">당신은 <span className={myRole===1?'t-white':'t-black'}>{myRole===1?'백색(P1)':'흑색(P2)'}</span> 입니다</p>
                 
                 <div className="status-box">
                   <div className={`player-status ${readyStatus[1]?'ready':''}`}>
-                    백색(P1): {takenRoles[1] ? (readyStatus[1] ? '준비 완료! (Ready)' : '선택됨, 준비 대기 중...') : '접속 대기 중...'}
+                    백색(P1): {takenRoles[1] ? (readyStatus[1] ? '준비 완료!' : '준비 대기 중...') : '접속 대기 중...'}
                   </div>
                   <div className={`player-status ${readyStatus[2]?'ready':''}`}>
-                    흑색(P2): {takenRoles[2] ? (readyStatus[2] ? '준비 완료! (Ready)' : '선택됨, 준비 대기 중...') : '접속 대기 중...'}
+                    흑색(P2): {takenRoles[2] ? (readyStatus[2] ? '준비 완료!' : '준비 대기 중...') : '접속 대기 중...'}
                   </div>
                 </div>
 
                 <div className="action-buttons">
                   {!readyStatus[myRole] ? (
-                    <button className="start-btn" onClick={toggleReady}>게임 시작 (Ready)</button>
+                    <button className="start-btn" onClick={toggleReady}>준비 완료 (Ready)</button>
                   ) : (
                     <button className="start-btn waiting">상대방 수락 대기 중...</button>
                   )}
-                  {/* 역할을 취소하고 다시 고르는 버튼 */}
-                  <button className="cancel-btn" onClick={() => { setMyRole(null); socket.emit('select_role', 0); /* 0은 역할 취소용 */ }}>
+                  <button className="cancel-btn" onClick={() => { setMyRole(null); socket.emit('select_role', 0); }}>
                     역할 다시 고르기
                   </button>
                 </div>
@@ -205,7 +216,7 @@ function App() {
         </div>
       )}
 
-      {/* 게임 화면 */}
+      {/* 게임 보드 */}
       <div className={`game-wrapper ${!isGameStarted ? 'blurred' : ''}`}>
         <header className="header">
           <h1 className="game-title">QUORIDOR</h1>
