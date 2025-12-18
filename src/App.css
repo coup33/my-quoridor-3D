@@ -284,3 +284,34 @@ body {
 .modal { background: white; color: black; padding: 30px; border-radius: 15px; text-align: center; }
 .reset-large { margin-top: 15px; padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
 .reset-float { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: #c92a2a; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+
+/* --- ⏱️ 초읽기 타임 바 스타일 --- */
+.time-bar-wrapper {
+  width: 100%;
+  height: 12px;
+  background-color: #495057; /* 빈 게이지 색상 */
+  border-radius: 6px;
+  margin-top: 8px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.time-bar-fill {
+  height: 100%;
+  background-color: #27ae60; /* 기본 초록색 */
+  width: 0%; /* JS로 제어 */
+  transition: width 0.5s linear, background-color 0.3s;
+}
+
+/* 시간이 얼마 안 남았을 때 색상 변화 */
+.time-bar-fill.warning { background-color: #fcc419; } /* 30초 미만 */
+.time-bar-fill.danger { background-color: #e03131; }  /* 10초 미만 */
+
+.time-text {
+  font-size: 0.8rem;
+  color: #adb5bd;
+  margin-top: 4px;
+  text-align: right;
+  font-variant-numeric: tabular-nums; /* 숫자 너비 고정 */
+}
