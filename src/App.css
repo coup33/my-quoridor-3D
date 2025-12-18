@@ -1,0 +1,204 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Pretendard', sans-serif;
+  background-color: #e9ecef;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.header {
+  height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.game-title {
+  font-size: 1.4rem;
+  letter-spacing: 12px;
+  color: #adb5bd;
+  font-weight: 800;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  padding-bottom: 40px;
+}
+
+/* 플레이어 패널 */
+.side-panel {
+  width: 210px;
+  padding: 35px 20px;
+  border-radius: 24px;
+  text-align: center;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.side-panel.active {
+  border: 2.5px solid #343a40;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  transform: translateY(-8px);
+}
+
+.wall-counter {
+  padding: 15px;
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+.white-box { background: #ffffff; border: 1px solid #ced4da; }
+.black-box { background: #212529; color: #f8f9fa; }
+.count { font-size: 2.8rem; font-weight: 800; }
+
+.button-group { display: flex; flex-direction: column; gap: 10px; }
+.btn {
+  padding: 14px;
+  border: 2px solid #495057;
+  background: white;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.btn:disabled { opacity: 0.2; cursor: not-allowed; }
+.p1-btn.selected { background: #e9ecef !important; border-style: dashed; }
+.p2-btn.selected { background: #212529 !important; color: white !important; }
+
+/* 보드 영역 */
+.board-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.turn-display {
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+  font-weight: 800;
+  text-align: center;
+  min-height: 45px;
+}
+
+.t-white { color: #495057; }
+.t-black { color: #212529; }
+.win-text { color: #27ae60; }
+
+.board-container {
+  background: #343a40;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(9, 60px);
+  grid-template-rows: repeat(9, 60px);
+  gap: 8px;
+}
+
+.cell {
+  width: 60px; height: 60px;
+  background: #adb5bd;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.cell.highlight { background: #ffd43b !important; }
+.move-dot { width: 12px; height: 12px; background: rgba(0, 0, 0, 0.15); border-radius: 50%; }
+
+/* 말 디자인 */
+.pawn { width: 46px; height: 46px; border-radius: 50%; z-index: 5; }
+.white-pawn { background: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+.black-pawn { background: #212529; border: 1px solid #495057; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+
+/* 벽 설치 UI */
+.wall-target {
+  position: absolute;
+  z-index: 10;
+  background: transparent;
+  pointer-events: none; /* 기본클릭 방지 */
+}
+
+.wall-target.in-wall-mode {
+  pointer-events: auto;
+  cursor: pointer; /* 모든 틈새에서 커서 활성화 */
+}
+
+/* 설치 가능한 곳만 노란색 미리보기 */
+.wall-target.placeable:hover {
+  background: rgba(255, 212, 59, 0.4);
+  box-shadow: 0 0 8px rgba(255, 212, 59, 0.5);
+  border-radius: 4px;
+}
+
+.wall-target.h { width: 128px; height: 12px; }
+.wall-target.v { width: 12px; height: 128px; }
+
+.placed-wall {
+  position: absolute;
+  background: #f8f9fa;
+  border: 1px solid #ced4da;
+  z-index: 20;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  pointer-events: none;
+}
+
+.placed-wall.h { width: 128px; height: 12px; }
+.placed-wall.v { width: 12px; height: 128px; }
+
+/* 초기화 및 팝업 */
+.reset-float {
+  position: fixed; bottom: 25px; right: 25px;
+  padding: 14px 22px; border-radius: 50px;
+  background: #343a40; color: white; border: none;
+  cursor: pointer; font-weight: 700;
+}
+
+.overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex; justify-content: center; align-items: center; z-index: 100;
+}
+
+.modal {
+  background: #f8f9fa; padding: 50px; border-radius: 30px;
+  text-align: center; border: 3px solid #343a40;
+}
+
+.reset-large {
+  margin-top: 20px; padding: 12px 30px;
+  background: #27ae60; color: white; border: none;
+  border-radius: 12px; cursor: pointer; font-weight: 800;
+}
+
+.role-badge {
+  background: #343a40;
+  color: #ffd43b;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-top: 5px;
+}
