@@ -26,8 +26,7 @@ function App() {
   const [readyStatus, setReadyStatus] = useState({ 1: false, 2: false });
   const [isGameStarted, setIsGameStarted] = useState(false);
 
-  // ★ 벽 설치 2단계 (미리보기) 상태 추가
-  const [previewWall, setPreviewWall] = useState(null); // {x, y, orientation}
+  const [previewWall, setPreviewWall] = useState(null); 
 
   useEffect(() => {
     socket.emit('request_lobby');
@@ -58,7 +57,7 @@ function App() {
     setTurn(state.turn);
     setWalls(state.walls || []);
     setWinner(state.winner);
-    setPreviewWall(null); // 상태 동기화 시 프리뷰 해제
+    setPreviewWall(null); 
     if (state.turn === myRole) setActionMode(null);
   };
 
@@ -73,34 +72,123 @@ function App() {
 
   const isMyTurn = turn === myRole;
 
+  // --- 🔥 [핵심 로직 1] 벽에 의한 이동 차단 확인 ---
+  const isBlockedByWall = (currentX, currentY, targetX, targetY, currentWalls) => {
+    // 1. 위로 이동 (y가 줄어듦): (x, y-1)의 H벽 또는 (x-1, y-1)의 H벽 체크
+    if (targetY < currentY) {
+      return currentWalls.some(w => w.orientation === 'h' && w.y === targetY && (w.x === currentX || w.x === currentX - 1));
+    }
+    // 2. 아래로 이동 (y가 늘어남): (x, y)의 H벽 또는 (x-1, y)의 H벽 체크
+    if (targetY > currentY) {
+      return currentWalls.some(w => w.orientation === 'h' && w.y === currentY && (w.x === currentX || w.x === currentX - 1));
+    }
+    // 3. 왼쪽으로 이동 (x가 줄어듦): (x-1, y)의 V벽 또는 (x-1, y-1)의 V벽 체크
+    if (targetX < currentX) {
+      return currentWalls.some(w => w.orientation === 'v' && w.x === targetX && (w.y === currentY || w.y === currentY - 1));
+    }
+    // 4. 오른쪽으로 이동 (x가 늘어남): (x, y)의 V벽 또는 (x, y-1)의 V벽 체크
+    if (targetX > currentX) {
+      return currentWalls.some(w => w.orientation === 'v' && w.x === currentX && (w.y === currentY || w.y === currentY - 1));
+    }
+    return false;
+  };
+
+  // --- 🔥 [핵심 로직 2] 길 찾기 알고리즘 (BFS) ---
+  // 벽을 설치했을 때 목표 지점까지 갈 수 있는지 확인
+  const hasValidPath = (startNode, targetRow, simulatedWalls) => {
+    const queue = [startNode]; // {x, y}
+    const visited = new Set();
+    visited.add(`${startNode.x},${startNode.y}`);
+
+    const directions = [
+      { dx: 0, dy: -1 }, // 상
+      { dx: 0, dy: 1 },  // 하
+      { dx: -1, dy: 0 }, // 좌
+      { dx: 1, dy: 0 }   // 우
+    ];
+
+    while (queue.length > 0) {
+      const { x, y } = queue.shift();
+
+      // 목표 지점(행)에 도달했으면 성공
+      if (y === targetRow) return true;
+
+      for (let dir of directions) {
+        const nx = x + dir.dx;
+        const ny = y + dir.dy;
+
+        // 보드 범위 체크
+        if (nx >= 0 && nx < 9 && ny >= 0 && ny < 9) {
+          const key = `${nx},${ny}`;
+          if (!visited.has(key)) {
+            // 벽에 막혀있지 않아야 이동 가능
+            if (!isBlockedByWall(x, y, nx, ny, simulatedWalls)) {
+              visited.add(key);
+              queue.push({ x: nx, y: ny });
+            }
+          }
+        }
+      }
+    }
+    return false; // 큐가 빌 때까지 목표에 못 가면 길이 막힌 것
+  };
+
   const isMoveable = (targetX, targetY) => {
     if (!isGameStarted || !isMyTurn || actionMode !== 'move' || winner) return false;
+    
     const current = turn === 1 ? player1 : player2;
     const opponent = turn === 1 ? player2 : player1;
+    
+    // 1. 인접성 체크 (상하좌우 1칸)
     const diffX = Math.abs(current.x - targetX);
     const diffY = Math.abs(current.y - targetY);
     const isAdjacent = (diffX === 1 && diffY === 0) || (diffX === 0 && diffY === 1);
+    
+    // 2. 상대방이 있는지 체크 (간단한 버전: 상대방 있으면 못감. 정석 룰은 점프 가능하나 일단 기본만)
     const isOccupied = targetX === opponent.x && targetY === opponent.y;
-    return isAdjacent && !isOccupied;
+
+    // 3. 벽 체크 (새로 추가된 로직)
+    const isBlocked = isBlockedByWall(current.x, current.y, targetX, targetY, walls);
+
+    return isAdjacent && !isOccupied && !isBlocked;
   };
 
   const canPlaceWall = (x, y, orientation) => {
     if (!isGameStarted || !isMyTurn || winner) return false;
-    return !walls.some(w => {
-      if (w.x === x && w.y === y && w.orientation === orientation) return true;
+    
+    // 1. 벽 겹침/교차 체크
+    const isOverlap = walls.some(w => {
+      if (w.x === x && w.y === y && w.orientation === orientation) return true; // 완전 겹침
       if (w.orientation === orientation) {
+         // 같은 방향일 때 일자로 겹침 (길이가 2칸이므로)
         if (orientation === 'h' && w.y === y && Math.abs(w.x - x) === 1) return true;
         if (orientation === 'v' && w.x === x && Math.abs(w.y - y) === 1) return true;
       }
+      // 교차 (+) 형태 체크
       if (w.x === x && w.y === y && w.orientation !== orientation) return true;
       return false;
     });
+
+    if (isOverlap) return false;
+
+    // 2. 길 막힘 체크 (Pathfinding)
+    // 가상의 벽 목록 생성
+    const simulatedWalls = [...walls, { x, y, orientation }];
+    
+    // P1이 Row 8(맨 아래)에 갈 수 있는가?
+    const p1Path = hasValidPath({ x: player1.x, y: player1.y }, 8, simulatedWalls);
+    // P2가 Row 0(맨 위)에 갈 수 있는가?
+    const p2Path = hasValidPath({ x: player2.x, y: player2.y }, 0, simulatedWalls);
+
+    // 둘 다 갈 수 있어야 설치 가능
+    return p1Path && p2Path;
   };
 
   const handleCellClick = (x, y) => {
-    setPreviewWall(null); // 이동하면 벽 프리뷰 취소
+    setPreviewWall(null); 
     if (!isMyTurn) return;
     if (!isMoveable(x, y)) return;
+    
     let nextState = { p1: player1, p2: player2, turn: turn === 1 ? 2 : 1, walls, winner: null };
     if (turn === 1) {
       nextState.p1 = { ...player1, x, y };
@@ -112,14 +200,19 @@ function App() {
     emitAction(nextState);
   };
 
-  // ★ 수정: 터치 2번 해야 설치되는 로직 적용
   const handleWallClick = (x, y, orientation) => {
     if (!isMyTurn || actionMode !== 'wall') return;
     const current = turn === 1 ? player1 : player2;
     if (current.wallCount <= 0) return;
-    if (!canPlaceWall(x, y, orientation)) return;
+    
+    // 여기서 유효성 체크 (길막힘 포함)
+    if (!canPlaceWall(x, y, orientation)) {
+        // 불가능하면 프리뷰도 해제하고 리턴
+        setPreviewWall(null);
+        return; 
+    }
 
-    // 1. 이미 같은 곳을 미리보기(Preview) 중이라면 -> 설치 확정!
+    // 모바일 터치 2번 로직
     if (previewWall && previewWall.x === x && previewWall.y === y && previewWall.orientation === orientation) {
       const nextWalls = [...walls, { x, y, orientation }];
       let nextState = { 
@@ -130,15 +223,12 @@ function App() {
         winner: null
       };
       emitAction(nextState);
-      setPreviewWall(null); // 설치 후 프리뷰 삭제
-    } 
-    // 2. 아니면 -> 미리보기 상태로 변경 (화면에 흐릿하게 표시)
-    else {
+      setPreviewWall(null);
+    } else {
       setPreviewWall({ x, y, orientation });
     }
   };
 
-  // 스타일 헬퍼
   const getVWallStyle = (x, y) => ({
     left: `calc(${x} * var(--unit) + var(--cell))`,
     top: `calc(${y} * var(--unit))`
@@ -163,12 +253,10 @@ function App() {
     }
   };
 
-  // 관전자인지 확인
   const isSpectator = isGameStarted && myRole !== 1 && myRole !== 2;
 
   return (
     <div className="container">
-      {/* 타이틀을 최상단으로 빼서 CSS 제어 */}
       <div className="game-title">QUORIDOR</div>
 
       {!isGameStarted && (
@@ -203,18 +291,11 @@ function App() {
 
       <div className={`game-wrapper ${!isGameStarted ? 'blurred' : ''}`}>
         <header className="header">
-          {/* 관전자일 때만 표시 */}
           {isSpectator && <div className="spectator-badge">관전 모드</div>}
         </header>
 
         <main className="main-content">
-          {/* [모바일 배치 핵심]
-            white-area: order 1 (상단)
-            board-section: order 2 (중간)
-            black-area: order 3 (하단)
-          */}
           <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`}>
-            {/* P1 텍스트 제거 */}
             <div className="wall-counter white-box">남은 벽: <span className="count">{player1.wallCount}</span></div>
             {myRole === 1 ? (
               <div className="button-group">
@@ -230,7 +311,6 @@ function App() {
             </div>
             <div className="board-container">
               <div className="board">
-                {/* 1. 말 이동 칸 */}
                 {Array.from({length:81}).map((_,i)=>{
                   const x=i%9, y=Math.floor(i/9);
                   const canMove=isMoveable(x,y);
@@ -242,14 +322,13 @@ function App() {
                     </div>
                   );
                 })}
-                {/* 2. 벽 설치 슬롯 */}
+                
                 {Array.from({length:64}).map((_,i)=>{
                   const x=i%8, y=Math.floor(i/8);
                   const isWallMode=actionMode==='wall'&&isMyTurn;
                   const canH=isWallMode&&canPlaceWall(x,y,'h');
                   const canV=isWallMode&&canPlaceWall(x,y,'v');
                   
-                  // 프리뷰(첫번째 터치) 상태인지 확인
                   const isPreviewH = previewWall && previewWall.x===x && previewWall.y===y && previewWall.orientation==='h';
                   const isPreviewV = previewWall && previewWall.x===x && previewWall.y===y && previewWall.orientation==='v';
 
@@ -268,7 +347,7 @@ function App() {
                     </React.Fragment>
                   );
                 })}
-                {/* 3. 실제 설치된 벽 */}
+
                 {(walls || []).map((wall,i)=>(
                   <div key={i} className={`placed-wall ${wall.orientation}`} style={getPlacedWallStyle(wall)}/>
                 ))}
@@ -277,7 +356,6 @@ function App() {
           </section>
 
           <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''}`}>
-             {/* P2 텍스트 제거 */}
             <div className="wall-counter black-box">남은 벽: <span className="count">{player2.wallCount}</span></div>
             {myRole === 2 ? (
               <div className="button-group">
