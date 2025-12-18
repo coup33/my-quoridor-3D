@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import './App.css';
 
-// 렌더 주소 유지
 const socket = io('https://my-quoridor.onrender.com');
 
 function App() {
@@ -22,7 +21,6 @@ function App() {
   const [actionMode, setActionMode] = useState(initialState.actionMode);
   const [winner, setWinner] = useState(initialState.winner);
   
-  // 로비 및 역할 상태
   const [myRole, setMyRole] = useState(null);
   const [takenRoles, setTakenRoles] = useState({ 1: null, 2: null });
   const [readyStatus, setReadyStatus] = useState({ 1: false, 2: false });
@@ -30,17 +28,14 @@ function App() {
 
   useEffect(() => {
     socket.emit('request_lobby');
-
     socket.on('lobby_update', (data) => {
       setTakenRoles(data.roles);
       setReadyStatus(data.readyStatus);
       setIsGameStarted(data.isGameStarted);
-
       if (data.roles[1] === socket.id) setMyRole(1);
       else if (data.roles[2] === socket.id) setMyRole(2);
       else setMyRole(null);
     });
-
     socket.on('game_start', (started) => setIsGameStarted(started));
     socket.on('update_state', (state) => syncWithServer(state));
     socket.on('init_state', (state) => syncWithServer(state));
@@ -60,8 +55,6 @@ function App() {
     setTurn(state.turn);
     setWalls(state.walls || []);
     setWinner(state.winner);
-    
-    // 내 턴이 돌아왔을 때만 액션 모드 초기화 (선택권 부여)
     if (state.turn === myRole) setActionMode(null);
   };
 
@@ -103,11 +96,7 @@ function App() {
   const handleCellClick = (x, y) => {
     if (!isMyTurn) return;
     if (!isMoveable(x, y)) return;
-
-    let nextState = { 
-      p1: player1, p2: player2, turn: turn === 1 ? 2 : 1, walls, winner: null 
-    };
-
+    let nextState = { p1: player1, p2: player2, turn: turn === 1 ? 2 : 1, walls, winner: null };
     if (turn === 1) {
       nextState.p1 = { ...player1, x, y };
       if (nextState.p1.y === 8) nextState.winner = 1;
@@ -120,11 +109,9 @@ function App() {
 
   const handleWallClick = (x, y, orientation) => {
     if (!isMyTurn || actionMode !== 'wall') return;
-
     const current = turn === 1 ? player1 : player2;
     if (current.wallCount <= 0) return;
     if (!canPlaceWall(x, y, orientation)) return;
-
     const nextWalls = [...walls, { x, y, orientation }];
     let nextState = { 
       p1: turn === 1 ? { ...player1, wallCount: player1.wallCount - 1 } : player1,
@@ -136,71 +123,85 @@ function App() {
     emitAction(nextState);
   };
 
+  // --- 중요: 모바일 반응형을 위한 위치 계산 스타일 헬퍼 ---
+  // calc(x * (cell + gap)) 방식을 사용하여 CSS 변수에 따라 자동 조절됨
+  const getVWallStyle = (x, y) => ({
+    left: `calc(${x} * var(--unit) + var(--cell))`,
+    top: `calc(${y} * var(--unit))`
+  });
+
+  const getHWallStyle = (x, y) => ({
+    left: `calc(${x} * var(--unit))`,
+    top: `calc(${y} * var(--unit) + var(--cell))`
+  });
+
+  const getPlacedWallStyle = (wall) => {
+    if (wall.orientation === 'v') {
+      return {
+        left: `calc(${wall.x} * var(--unit) + var(--cell))`,
+        top: `calc(${wall.y} * var(--unit))`
+      };
+    } else {
+      return {
+        left: `calc(${wall.x} * var(--unit))`,
+        top: `calc(${wall.y} * var(--unit) + var(--cell))`
+      };
+    }
+  };
+
   return (
     <div className="container">
-      {/* 로비 */}
       {!isGameStarted && (
         <div className="lobby-overlay">
           <div className="lobby-card">
-            <h2 className="lobby-title">QUORIDOR ONLINE</h2>
+            <h2 className="lobby-title">QUORIDOR</h2>
             {!myRole && (
               <div className="role-selection">
-                <p>플레이할 색상을 선택하세요</p>
                 <div className="role-buttons">
                   <button className="role-btn white" disabled={takenRoles[1] !== null} onClick={() => selectRole(1)}>
-                    백색 (P1) {takenRoles[1] ? <span className="taken-badge">사용 중</span> : <span className="free-badge">선택 가능</span>}
+                    백색 (P1) {takenRoles[1] && <span className="taken-badge">사용 중</span>}
                   </button>
                   <button className="role-btn black" disabled={takenRoles[2] !== null} onClick={() => selectRole(2)}>
-                    흑색 (P2) {takenRoles[2] ? <span className="taken-badge">사용 중</span> : <span className="free-badge">선택 가능</span>}
+                    흑색 (P2) {takenRoles[2] && <span className="taken-badge">사용 중</span>}
                   </button>
                 </div>
               </div>
             )}
             {myRole && (
               <div className="ready-section">
-                <p className="my-role-text">당신은 <span className={myRole===1?'t-white':'t-black'}>{myRole===1?'백색(P1)':'흑색(P2)'}</span> 입니다</p>
                 <div className="status-box">
-                  <div className={`player-status ${readyStatus[1]?'ready':''}`}>P1: {takenRoles[1]?(readyStatus[1]?'준비 완료!':'대기 중...'):'접속 대기...'}</div>
-                  <div className={`player-status ${readyStatus[2]?'ready':''}`}>P2: {takenRoles[2]?(readyStatus[2]?'준비 완료!':'대기 중...'):'접속 대기...'}</div>
+                  <div className={`player-status ${readyStatus[1]?'ready':''}`}>P1: {readyStatus[1]?'준비 완료':'대기 중'}</div>
+                  <div className={`player-status ${readyStatus[2]?'ready':''}`}>P2: {readyStatus[2]?'준비 완료':'대기 중'}</div>
                 </div>
-                <div className="action-buttons">
-                  {!readyStatus[myRole] ? <button className="start-btn" onClick={toggleReady}>준비 완료</button> : <button className="start-btn waiting">대기 중...</button>}
-                  <button className="cancel-btn" onClick={() => socket.emit('select_role', 0)}>나가기</button>
-                </div>
+                {!readyStatus[myRole] ? <button className="start-btn" onClick={toggleReady}>준비 하기</button> : <button className="start-btn waiting">대기 중...</button>}
+                <button className="cancel-btn" onClick={() => socket.emit('select_role', 0)}>나가기</button>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* 게임 보드 */}
       <div className={`game-wrapper ${!isGameStarted ? 'blurred' : ''}`}>
         <header className="header">
           <h1 className="game-title">QUORIDOR</h1>
-          <div className="role-badge">{myRole === 1 ? "나: 백색(P1)" : myRole === 2 ? "나: 흑색(P2)" : "관전"}</div>
+          <div className="role-badge">{myRole===1 ? "P1(백)" : myRole===2 ? "P2(흑)" : "관전"}</div>
         </header>
 
         <main className="main-content">
-          {/* --- 왼쪽: 백색 플레이어 패널 --- */}
           <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`}>
-            <h2 className="player-label">백색 (P1)</h2>
-            <div className="wall-counter white-box"><div className="count">{player1.wallCount}</div></div>
-            
-            {/* 💡 수정됨: 내 역할이 1(백색)일 때만 버튼 표시 */}
+            <div className="player-label">P1 (백색)</div>
+            <div className="wall-counter white-box">남은 벽: <span className="count">{player1.wallCount}</span></div>
             {myRole === 1 ? (
               <div className="button-group">
                 <button className={`btn p1-btn ${actionMode==='move'?'selected':''}`} onClick={()=>setActionMode('move')} disabled={!isMyTurn||winner}>이동</button>
                 <button className={`btn p1-btn ${actionMode==='wall'?'selected':''}`} onClick={()=>setActionMode('wall')} disabled={!isMyTurn||winner}>벽</button>
               </div>
-            ) : (
-              <div className="opponent-status">상대방</div>
-            )}
+            ) : <div className="opponent-status">상대방</div>}
           </aside>
 
-          {/* --- 중앙: 보드 --- */}
           <section className="board-section">
             <div className="turn-display">
-              {winner ? <span className="win-text">{winner===1?'백색 승리!':'흑색 승리!'}</span> : <span className={turn===1?'t-white':'t-black'}>{turn===1?'● 백색 차례':'● 흑색 차례'}</span>}
+              {winner ? <span className="win-text">승리!</span> : <span className={turn===1?'t-white':'t-black'}>{turn===1?'● 백색 턴':'● 흑색 턴'}</span>}
             </div>
             <div className="board-container">
               <div className="board">
@@ -222,33 +223,30 @@ function App() {
                   const canV=isWallMode&&canPlaceWall(x,y,'v');
                   return (
                     <React.Fragment key={`wp-${x}-${y}`}>
-                      <div className={`wall-target h ${isWallMode?'in-wall-mode':''} ${canH?'placeable':''}`} style={{left:x*68,top:y*68+60}} onClick={()=>handleWallClick(x,y,'h')}/>
-                      <div className={`wall-target v ${isWallMode?'in-wall-mode':''} ${canV?'placeable':''}`} style={{left:x*68+60,top:y*68}} onClick={()=>handleWallClick(x,y,'v')}/>
+                      <div className={`wall-target h ${isWallMode?'in-wall-mode':''} ${canH?'placeable':''}`} style={getHWallStyle(x,y)} onClick={()=>handleWallClick(x,y,'h')}/>
+                      <div className={`wall-target v ${isWallMode?'in-wall-mode':''} ${canV?'placeable':''}`} style={getVWallStyle(x,y)} onClick={()=>handleWallClick(x,y,'v')}/>
                     </React.Fragment>
                   );
                 })}
-                {(walls || []).map((wall,i)=>(<div key={i} className={`placed-wall ${wall.orientation}`} style={{left:wall.x*68+(wall.orientation==='v'?60:0),top:wall.y*68+(wall.orientation==='h'?60:0)}}/>))}
+                {(walls || []).map((wall,i)=>(
+                  <div key={i} className={`placed-wall ${wall.orientation}`} style={getPlacedWallStyle(wall)}/>
+                ))}
               </div>
             </div>
           </section>
 
-          {/* --- 오른쪽: 흑색 플레이어 패널 --- */}
           <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''}`}>
-            <h2 className="player-label">흑색 (P2)</h2>
-            <div className="wall-counter black-box"><div className="count">{player2.wallCount}</div></div>
-            
-            {/* 💡 수정됨: 내 역할이 2(흑색)일 때만 버튼 표시 */}
+            <div className="player-label">P2 (흑색)</div>
+            <div className="wall-counter black-box">남은 벽: <span className="count">{player2.wallCount}</span></div>
             {myRole === 2 ? (
               <div className="button-group">
                 <button className={`btn p2-btn ${actionMode==='move'?'selected':''}`} onClick={()=>setActionMode('move')} disabled={!isMyTurn||winner}>이동</button>
                 <button className={`btn p2-btn ${actionMode==='wall'?'selected':''}`} onClick={()=>setActionMode('wall')} disabled={!isMyTurn||winner}>벽</button>
               </div>
-            ) : (
-              <div className="opponent-status">상대방</div>
-            )}
+            ) : <div className="opponent-status">상대방</div>}
           </aside>
         </main>
-        {isGameStarted && <button className="reset-float" onClick={resetGame}>🔄 중단</button>}
+        {isGameStarted && <button className="reset-float" onClick={resetGame}>🔄</button>}
         {winner && <div className="overlay"><div className="modal"><h2>{winner===1?'백색':'흑색'} 승리!</h2><button className="reset-large" onClick={resetGame}>로비로</button></div></div>}
       </div>
     </div>

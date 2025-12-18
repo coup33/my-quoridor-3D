@@ -2,6 +2,21 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  /* 모바일 터치 시 확대 방지 및 터치감 개선 */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+  /* [PC 기본 사이즈] */
+  --cell: 54px;      /* 칸 크기 */
+  --gap: 8px;        /* 칸 사이 간격 */
+  --pawn: 40px;      /* 말 크기 */
+  --wall-thick: 10px; /* 벽 두께 */
+  
+  /* 계산된 값들 (수정 X) */
+  --unit: calc(var(--cell) + var(--gap)); /* 1칸+1간격 (이동 단위) */
+  --wall-long: calc(var(--cell) * 2 + var(--gap)); /* 긴 벽 길이 */
 }
 
 body {
@@ -10,225 +25,246 @@ body {
 }
 
 .container {
-  position: relative;
   width: 100vw;
   height: 100vh;
-  overflow: hidden;
-}
-
-/* 게임 래퍼: 전체 화면을 꽉 채우게 수정 */
-.game-wrapper {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  transition: filter 0.3s;
+  overflow: hidden; /* 스크롤 방지 */
 }
 
-.game-wrapper.blurred {
-  filter: blur(8px);
-  pointer-events: none;
-}
-
+/* 헤더 */
 .header {
-  height: 60px;
+  height: 50px;
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-direction: column;
+  background: #343a40;
+  color: white;
+  gap: 10px;
 }
 
 .game-title {
-  font-size: 1.4rem;
-  letter-spacing: 12px;
-  color: #adb5bd;
+  font-size: 1.2rem;
+  letter-spacing: 5px;
   font-weight: 800;
+  margin: 0;
 }
 
 .role-badge {
-  background: #343a40;
-  color: #ffd43b;
+  background: #ffd43b;
+  color: #343a40;
   padding: 2px 10px;
-  border-radius: 20px;
+  border-radius: 12px;
   font-size: 0.8rem;
   font-weight: bold;
 }
 
-.main-content {
+/* 메인 컨텐츠 (반응형 레이아웃의 핵심) */
+.game-wrapper {
   flex: 1;
+  width: 100%;
   display: flex;
-  justify-content: space-evenly;
-  align-items: center;
-  padding-bottom: 20px;
+  justify-content: center; /* 가로 중앙 */
+  align-items: center;     /* 세로 중앙 */
+  position: relative;
+  transition: filter 0.3s;
 }
 
-/* 패널 스타일 */
+.game-wrapper.blurred {
+  filter: blur(5px);
+  pointer-events: none;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: row; /* PC: 가로 배치 */
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+}
+
+/* 플레이어 패널 (PC) */
 .side-panel {
   width: 180px;
   padding: 20px;
-  border-radius: 20px;
-  text-align: center;
+  border-radius: 15px;
   background: #f8f9fa;
   border: 1px solid #dee2e6;
-  transition: all 0.3s ease;
+  text-align: center;
+  transition: all 0.3s;
+  flex-shrink: 0;
 }
 
 .side-panel.active {
-  border: 2.5px solid #343a40;
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  border: 3px solid #343a40;
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.15);
 }
 
-.wall-counter {
-  padding: 10px;
-  border-radius: 12px;
-  margin-bottom: 15px;
-}
-.white-box { background: white; border: 1px solid #ced4da; }
-.black-box { background: #212529; color: white; }
-.count { font-size: 2rem; font-weight: 800; }
+.player-label { margin-bottom: 10px; font-size: 1.1rem; }
+.wall-counter .count { font-size: 2rem; font-weight: 800; }
+.white-box { background: white; border: 1px solid #ced4da; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+.black-box { background: #212529; color: white; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
 
 .button-group { display: flex; flex-direction: column; gap: 8px; }
 .btn {
-  padding: 10px;
+  padding: 12px;
   border: 2px solid #495057;
   background: white;
   font-weight: bold;
-  cursor: pointer;
   border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
 }
-.btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.p1-btn.selected { background: #e9ecef !important; border-style: dashed; }
+.btn:disabled { opacity: 0.3; }
+.p1-btn.selected { background: #e9ecef; border-style: dashed; }
 .p2-btn.selected { background: #212529 !important; color: white !important; }
 
-/* 보드 영역 */
+.opponent-status { color: #868e96; font-size: 0.9rem; }
+
+/* 보드판 영역 */
 .board-section {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
 .turn-display {
   margin-bottom: 10px;
-  font-size: 1.5rem;
-  font-weight: 800;
-  min-height: 35px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  height: 25px;
 }
 .t-white { color: #495057; }
 .t-black { color: #212529; }
-.win-text { color: #27ae60; }
 
 .board-container {
   background: #343a40;
-  padding: 15px;
-  border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
+/* 그리드 시스템 */
 .board {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(9, 60px);
-  grid-template-rows: repeat(9, 60px);
-  gap: 8px;
+  /* CSS 변수로 그리드 크기 자동 계산 */
+  grid-template-columns: repeat(9, var(--cell));
+  grid-template-rows: repeat(9, var(--cell));
+  gap: var(--gap);
 }
 
 .cell {
-  width: 60px; height: 60px;
+  width: var(--cell); height: var(--cell);
   background: #adb5bd;
   border-radius: 4px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: flex; justify-content: center; align-items: center;
   cursor: pointer;
 }
 .cell.highlight { background: #ffd43b !important; }
-.move-dot { width: 12px; height: 12px; background: rgba(0,0,0,0.15); border-radius: 50%; }
 
-.pawn { width: 46px; height: 46px; border-radius: 50%; z-index: 5; }
-.white-pawn { background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-.black-pawn { background: #212529; border: 1px solid #495057; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+/* 말 */
+.pawn { width: var(--pawn); height: var(--pawn); border-radius: 50%; z-index: 5; transition: all 0.2s; }
+.white-pawn { background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.black-pawn { background: #212529; border: 1px solid #555; box-shadow: 0 2px 5px rgba(0,0,0,0.4); }
+.move-dot { width: 30%; height: 30%; background: rgba(0,0,0,0.15); border-radius: 50%; }
 
-/* 벽 스타일 */
-.wall-target { position: absolute; z-index: 10; background: transparent; pointer-events: none; }
-.wall-target.in-wall-mode { pointer-events: auto; cursor: pointer; }
+/* 벽 및 타겟 영역 */
+.wall-target { position: absolute; z-index: 10; background: transparent; }
+.wall-target.in-wall-mode { cursor: pointer; }
 .wall-target.placeable:hover { background: rgba(255, 212, 59, 0.5); }
 
-.wall-target.h { width: 128px; height: 12px; }
-.wall-target.v { width: 12px; height: 128px; }
+/* 가로 벽 (H) */
+.wall-target.h, .placed-wall.h {
+  width: var(--wall-long);
+  height: var(--wall-thick);
+}
+
+/* 세로 벽 (V) */
+.wall-target.v, .placed-wall.v {
+  width: var(--wall-thick);
+  height: var(--wall-long);
+}
 
 .placed-wall {
   position: absolute;
   background: #f8f9fa;
   border: 1px solid #ced4da;
   z-index: 20;
-  border-radius: 4px;
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   pointer-events: none;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-}
-.placed-wall.h { width: 128px; height: 12px; }
-.placed-wall.v { width: 12px; height: 128px; }
-
-/* 로비 오버레이 */
-.lobby-overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  background: rgba(0,0,0,0.6);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
 }
 
-.lobby-card {
-  background: white;
-  padding: 40px;
-  border-radius: 20px;
-  width: 400px;
-  text-align: center;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+/* --- 모바일 반응형 (화면 너비 768px 이하일 때) --- */
+@media (max-width: 768px) {
+  :root {
+    /* 모바일에서는 화면 너비(vw) 기준으로 크기 재설정 */
+    /* 100vw 중 여백 빼고 9칸으로 나누기 */
+    --cell: 9.5vw; 
+    --gap: 1vw;
+    --pawn: 7vw;
+    --wall-thick: 2vw;
+  }
+
+  .header { height: 40px; font-size: 0.9rem; }
+  .game-title { font-size: 1rem; letter-spacing: 2px; }
+
+  /* 세로 배치로 변경 */
+  .main-content {
+    flex-direction: column; 
+    justify-content: flex-start;
+    padding-top: 10px;
+    gap: 10px;
+  }
+
+  /* 패널 스타일 변경 (가로로 길게) */
+  .side-panel {
+    width: 95%; /* 화면 꽉 채우기 */
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 10px;
+    height: auto; /* 높이 자동 */
+  }
+  
+  .side-panel.active { transform: none; border: 2px solid #343a40; }
+
+  /* 내부 요소 가로 배치 */
+  .player-label { margin: 0; font-size: 1rem; }
+  .wall-counter { display: flex; align-items: center; gap: 5px; margin: 0; padding: 5px 10px; }
+  .count { font-size: 1.2rem; }
+  .button-group { flex-direction: row; }
+  .btn { padding: 8px 15px; font-size: 0.8rem; }
+
+  .board-container { padding: 8px; }
+  
+  /* P2(상단), P1(하단) 순서 배치를 위해 order 속성 사용 */
+  .black-area { order: 1; }
+  .board-section { order: 2; margin: 5px 0; }
+  .white-area { order: 3; }
 }
 
-.lobby-title { font-size: 1.8rem; margin-bottom: 20px; color: #333; }
-
+/* 로비 및 팝업 (기존 유지 + 반응형) */
+.lobby-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+.lobby-card { background: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; text-align: center; }
+.lobby-title { font-size: 1.5rem; color: #333; margin-bottom: 20px; }
 .role-buttons { display: flex; flex-direction: column; gap: 10px; }
-.role-btn {
-  padding: 15px;
-  border-radius: 10px;
-  border: 2px solid #ddd;
-  font-size: 1.1rem;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-}
+.role-btn { padding: 15px; border-radius: 10px; border: 2px solid #ddd; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 .role-btn.white { background: white; color: black; }
 .role-btn.black { background: #333; color: white; }
-.role-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.status-box { background: #f1f3f5; padding: 10px; border-radius: 10px; margin: 20px 0; text-align: left; font-size: 0.9rem; }
+.start-btn { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+.start-btn.waiting { background: #f39c12; }
+.cancel-btn { width: 100%; padding: 10px; margin-top: 10px; background: #adb5bd; color: white; border: none; border-radius: 10px; font-weight: bold; }
 
-.free-badge { background: #27ae60; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
-.taken-badge { background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
-
-.status-box { background: #f1f3f5; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left; }
-.player-status { padding: 5px 0; border-bottom: 1px solid #dee2e6; }
-.player-status.ready { color: #27ae60; font-weight: bold; }
-
-.start-btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; background: #27ae60; color: white; }
-.start-btn.waiting { background: #f39c12; cursor: wait; }
-
-.cancel-btn { width: 100%; margin-top: 10px; padding: 10px; background: #adb5bd; border: none; border-radius: 10px; color: white; cursor: pointer; font-weight: bold; }
-
-/* 팝업 */
-.overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 100; }
-.modal { background: white; padding: 40px; border-radius: 20px; text-align: center; }
-.reset-large { margin-top: 20px; padding: 10px 30px; background: #27ae60; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
-.reset-float { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: #343a40; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; }
-
-.opponent-status {
-  padding: 20px;
-  color: #adb5bd;
-  font-weight: bold;
-  font-size: 0.9rem;
-  letter-spacing: 2px;
-}
+.overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; }
+.modal { background: white; padding: 30px; border-radius: 20px; text-align: center; width: 85%; max-width: 350px; }
+.reset-large { margin-top: 15px; padding: 10px 25px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; }
+.reset-float { position: fixed; bottom: 20px; right: 20px; padding: 10px 15px; background: #343a40; color: white; border: none; border-radius: 30px; font-weight: bold; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
