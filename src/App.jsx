@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import './App.css';
 
-// Render 서버 주소 확인!
+// ✅ 사용자님이 알려주신 Render 서버 주소 적용 완료
 const socket = io('https://my-quoridor.onrender.com');
 
 function App() {
@@ -28,29 +28,32 @@ function App() {
   const [readyStatus, setReadyStatus] = useState({ 1: false, 2: false });
   const [isGameStarted, setIsGameStarted] = useState(false);
 
-  // *** 핵심 수정: 의존성 배열을 []로 하여 리스너가 절대 끊기지 않게 함 ***
   useEffect(() => {
-    // 1. 로비 정보 수신
+    // 1. 서버 접속 시 로비 정보 요청
+    socket.emit('request_lobby');
+
+    // 2. 로비 정보 수신 (여기가 핵심!)
     socket.on('lobby_update', (data) => {
-      console.log('실시간 업데이트:', data); // 로그 확인용
+      // (1) 누가 자리를 먹었는지 업데이트
       setTakenRoles(data.roles);
       setReadyStatus(data.readyStatus);
       setIsGameStarted(data.isGameStarted);
-      
-      // 내 역할 검증 (서버가 재시작되거나 뺏겼을 때 내 역할 해제)
-      // 주의: 여기서 setMyRole을 직접 호출하면 무한 루프 위험이 있어
-      // 아래의 useEffect에서 처리하거나 socket.id 비교를 신중히 해야 함.
-      // 여기서는 UI 업데이트에만 집중.
+
+      // (2) 서버 명단을 보고 "내 역할" 확정 짓기 (Source of Truth)
+      // socket.id가 서버 명단에 있으면 자동으로 myRole을 설정해서 다음 화면으로 넘김
+      if (data.roles[1] === socket.id) {
+        setMyRole(1);
+      } else if (data.roles[2] === socket.id) {
+        setMyRole(2);
+      } else {
+        // 명단에 내 아이디가 없으면 관전 모드(null)로 리셋
+        setMyRole(null);
+      }
     });
 
     socket.on('game_start', (started) => setIsGameStarted(started));
-    
-    // 게임 상태 동기화
     socket.on('init_state', (state) => syncWithServer(state));
     socket.on('update_state', (state) => syncWithServer(state));
-
-    // 접속 시 로비 정보 요청 (혹시 놓쳤을까봐)
-    socket.emit('request_lobby');
 
     return () => {
       socket.off('lobby_update');
@@ -58,14 +61,7 @@ function App() {
       socket.off('init_state');
       socket.off('update_state');
     };
-  }, []); // <--- 여기가 중요합니다! []
-
-  // 서버 데이터로 내 역할 유효성 검사 (별도 분리)
-  useEffect(() => {
-    if (myRole === 1 && takenRoles[1] !== socket.id) setMyRole(null);
-    if (myRole === 2 && takenRoles[2] !== socket.id) setMyRole(null);
-  }, [takenRoles, myRole]);
-
+  }, []);
 
   const syncWithServer = (state) => {
     setPlayer1(state.p1);
@@ -82,8 +78,9 @@ function App() {
 
   // --- 로비 액션 ---
   const selectRole = (role) => {
+    // ❗ 중요 수정: 여기서 setMyRole을 하지 않고 서버로 요청만 보냄
+    // 서버가 "너 역할 배정됐어"라고 응답(lobby_update)을 주면 그때 useEffect에서 바뀜
     socket.emit('select_role', role);
-    setMyRole(role);
   };
 
   const toggleReady = () => {
@@ -155,19 +152,20 @@ function App() {
 
   return (
     <div className="container">
+      {/* 로비 오버레이 */}
       {!isGameStarted && (
         <div className="lobby-overlay">
           <div className="lobby-card">
             <h2 className="lobby-title">QUORIDOR ONLINE</h2>
             
-            {/* 역할 선택 */}
+            {/* 1. 역할 선택 단계 */}
             {!myRole && (
               <div className="role-selection">
                 <p>플레이할 색상을 선택하세요</p>
                 <div className="role-buttons">
                   <button 
                     className="role-btn white" 
-                    // 중요: takenRoles[1]이 있으면(누군가 있으면) 무조건 비활성화
+                    // takenRoles[1]이 있으면(null이 아니면) 버튼 비활성화
                     disabled={takenRoles[1] !== null} 
                     onClick={() => selectRole(1)}
                   >
@@ -186,7 +184,7 @@ function App() {
               </div>
             )}
 
-            {/* 대기 화면 */}
+            {/* 2. 대기 및 시작 단계 */}
             {myRole && (
               <div className="ready-section">
                 <p className="my-role-text">당신은 <span className={myRole===1?'t-white':'t-black'}>{myRole===1?'백색(P1)':'흑색(P2)'}</span> 입니다</p>
@@ -206,8 +204,8 @@ function App() {
                   ) : (
                     <button className="start-btn waiting">상대방 수락 대기 중...</button>
                   )}
-                  <button className="cancel-btn" onClick={() => { setMyRole(null); socket.emit('select_role', 0); }}>
-                    역할 다시 고르기
+                  <button className="cancel-btn" onClick={() => { socket.emit('select_role', 0); /* 0번 보내면 서버가 역할 삭제 */ }}>
+                    역할 취소 / 다시 고르기
                   </button>
                 </div>
               </div>
