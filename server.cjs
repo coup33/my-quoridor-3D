@@ -6,10 +6,10 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
-const server = http.createServer(app);
+// server.cjs 파일 상단
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "*", // 테스트를 위해 우선 모든 주소 허용으로 바꿉니다.
     methods: ["GET", "POST"]
   }
 });
