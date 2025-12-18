@@ -14,7 +14,6 @@ const io = new Server(server, {
   }
 });
 
-// 초기 상태 상수
 const INITIAL_GAME_STATE = {
   p1: { x: 4, y: 0, wallCount: 10 },
   p2: { x: 4, y: 8, wallCount: 10 },
@@ -23,14 +22,11 @@ const INITIAL_GAME_STATE = {
   winner: null
 };
 
-// 현재 게임 상태 변수
 let gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
-
 let roles = { 1: null, 2: null };
 let readyStatus = { 1: false, 2: false };
 let isGameStarted = false;
 
-// 로비 상태 전송 함수
 const broadcastLobby = () => {
   io.emit('lobby_update', { roles, readyStatus, isGameStarted });
 };
@@ -38,11 +34,10 @@ const broadcastLobby = () => {
 io.on('connection', (socket) => {
   console.log(`[접속] ${socket.id}`);
 
-  // 1. 접속 시 정보 전송
   socket.emit('lobby_update', { roles, readyStatus, isGameStarted });
   if (isGameStarted) socket.emit('update_state', gameState);
 
-  // 2. 역할 선택
+  // 역할 선택
   socket.on('select_role', (roleNumber) => {
     roleNumber = parseInt(roleNumber);
     if (roleNumber === 0) {
@@ -57,35 +52,35 @@ io.on('connection', (socket) => {
     broadcastLobby();
   });
 
-  // 3. 준비 완료
+  // 준비 완료
   socket.on('player_ready', (roleNumber) => {
     if (roles[roleNumber] !== socket.id) return;
     readyStatus[roleNumber] = !readyStatus[roleNumber];
     broadcastLobby();
 
-    // 게임 시작 조건
     if (roles[1] && roles[2] && readyStatus[1] && readyStatus[2]) {
       isGameStarted = true;
-      gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE)); // 상태 리셋
-      
+      gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
       io.emit('game_start', true);
-      io.emit('update_state', gameState); // 초기화된 상태 전송
+      io.emit('update_state', gameState);
       broadcastLobby();
     }
   });
 
-  // 4. 게임 액션 (핵심 수정 부분)
+  // 게임 액션
   socket.on('game_action', (newState) => {
-    // 서버의 상태를 클라이언트가 보낸 최신 상태로 갱신
-    gameState = newState;
+    // 보안: 실제 플레이어만 게임 상태를 바꿀 수 있음
+    if (roles[1] !== socket.id && roles[2] !== socket.id) return;
     
-    // *** 중요: 모든 클라이언트에게 최신 상태를 강제로 동기화 ***
-    // (보낸 사람 포함 모두가 서버 데이터를 바라보게 함으로써 불일치 해결)
-    io.emit('update_state', gameState); 
+    gameState = newState;
+    io.emit('update_state', gameState);
   });
 
-  // 5. 게임 초기화
+  // 게임 초기화 (리셋)
   socket.on('reset_game', () => {
+    // 보안: 관전자는 리셋 버튼을 눌러도 서버가 무시함
+    if (roles[1] !== socket.id && roles[2] !== socket.id) return;
+
     isGameStarted = false;
     readyStatus = { 1: false, 2: false };
     gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
@@ -94,15 +89,27 @@ io.on('connection', (socket) => {
     broadcastLobby();
   });
 
-  // 6. 연결 종료
+  // *** 접속 종료 처리 (핵심 수정) ***
   socket.on('disconnect', () => {
-    if (roles[1] === socket.id) { roles[1] = null; readyStatus[1] = false; }
-    if (roles[2] === socket.id) { roles[2] = null; readyStatus[2] = false; }
-    if (isGameStarted) {
-      isGameStarted = false;
-      io.emit('game_start', false);
-    }
-    broadcastLobby();
+    console.log(`[퇴장] ${socket.id}`);
+    
+    // 나간 사람이 P1 또는 P2인지 확인
+    const isP1 = roles[1] === socket.id;
+    const isP2 = roles[2] === socket.id;
+
+    // 플레이어가 나간 경우에만 자리 비우기 및 게임 종료
+    if (isP1 || isP2) {
+      if (isP1) { roles[1] = null; readyStatus[1] = false; }
+      if (isP2) { roles[2] = null; readyStatus[2] = false; }
+      
+      // 게임 중이었는데 선수가 나가면 게임 펑!
+      if (isGameStarted) {
+        isGameStarted = false;
+        io.emit('game_start', false);
+      }
+      broadcastLobby();
+    } 
+    // 관전자가 나간 경우는 아무 일도 일어나지 않음 (로그만 찍힘)
   });
 });
 
