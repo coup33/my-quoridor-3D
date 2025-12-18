@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import './App.css';
 
-// 본인의 Render 주소 확인!
+// 렌더 주소 확인 (본인의 주소로 유지)
 const socket = io('https://my-quoridor.onrender.com');
 
 function App() {
@@ -36,54 +36,56 @@ function App() {
       setReadyStatus(data.readyStatus);
       setIsGameStarted(data.isGameStarted);
 
+      // 내 소켓 ID가 명단에 있으면 역할 부여
       if (data.roles[1] === socket.id) setMyRole(1);
       else if (data.roles[2] === socket.id) setMyRole(2);
       else setMyRole(null);
     });
 
     socket.on('game_start', (started) => setIsGameStarted(started));
-    socket.on('init_state', (state) => syncWithServer(state));
+    
+    // 상태 동기화 (init_state와 update_state를 하나로 통일해도 됨)
     socket.on('update_state', (state) => syncWithServer(state));
+    socket.on('init_state', (state) => syncWithServer(state));
 
     return () => {
       socket.off('lobby_update');
       socket.off('game_start');
-      socket.off('init_state');
       socket.off('update_state');
+      socket.off('init_state');
     };
   }, []);
 
   const syncWithServer = (state) => {
-    // 서버 데이터가 비정상적일 경우 방어 코드
-    if (!state || !state.p1 || !state.p2) return;
+    if (!state) return;
     setPlayer1(state.p1);
     setPlayer2(state.p2);
     setTurn(state.turn);
     setWalls(state.walls || []);
     setWinner(state.winner);
-    setActionMode(null);
+    // 내 차례가 오면 액션 모드 초기화 (선택권 부여)
+    if (state.turn === myRole) setActionMode(null);
   };
 
   const emitAction = (newState) => {
+    // 1. 내 화면 먼저 부드럽게 업데이트 (Optimistic UI)
+    syncWithServer(newState);
+    // 2. 서버로 전송
     socket.emit('game_action', newState);
   };
 
-  const selectRole = (role) => {
-    socket.emit('select_role', role);
-  };
+  // --- 로비 로직 ---
+  const selectRole = (role) => socket.emit('select_role', role);
+  const toggleReady = () => myRole && socket.emit('player_ready', myRole);
+  const resetGame = () => socket.emit('reset_game');
 
-  const toggleReady = () => {
-    if (myRole) socket.emit('player_ready', myRole);
-  };
-
-  const resetGame = () => {
-    socket.emit('reset_game');
-  };
-
+  // --- 게임 로직 ---
   const isMyTurn = turn === myRole;
-  
+
   const isMoveable = (targetX, targetY) => {
+    // 1. 게임 중이 아니거나, 내 차례가 아니면 이동 불가 (철벽 방어)
     if (!isGameStarted || !isMyTurn || actionMode !== 'move' || winner) return false;
+    
     const current = turn === 1 ? player1 : player2;
     const opponent = turn === 1 ? player2 : player1;
     const diffX = Math.abs(current.x - targetX);
@@ -94,7 +96,9 @@ function App() {
   };
 
   const canPlaceWall = (x, y, orientation) => {
-    if (!isGameStarted || winner || !isMyTurn) return false;
+    // 1. 내 차례 아니면 벽 설치 불가
+    if (!isGameStarted || !isMyTurn || winner) return false;
+    
     return !walls.some(w => {
       if (w.x === x && w.y === y && w.orientation === orientation) return true;
       if (w.orientation === orientation) {
@@ -107,8 +111,20 @@ function App() {
   };
 
   const handleCellClick = (x, y) => {
+    // [보안] 내 턴이 아니면 클릭 무시
+    if (!isMyTurn) return; 
+    
     if (!isMoveable(x, y)) return;
-    let nextState = { p1: player1, p2: player2, turn: turn === 1 ? 2 : 1, walls, winner: null };
+
+    // 다음 상태 계산
+    let nextState = { 
+      p1: player1, 
+      p2: player2, 
+      turn: turn === 1 ? 2 : 1, // 턴 넘기기
+      walls, 
+      winner: null 
+    };
+
     if (turn === 1) {
       nextState.p1 = { ...player1, x, y };
       if (nextState.p1.y === 8) nextState.winner = 1;
@@ -116,12 +132,15 @@ function App() {
       nextState.p2 = { ...player2, x, y };
       if (nextState.p2.y === 0) nextState.winner = 2;
     }
-    syncWithServer(nextState);
+
     emitAction(nextState);
   };
 
   const handleWallClick = (x, y, orientation) => {
-    if (actionMode !== 'wall' || !isMyTurn) return;
+    // [보안] 내 턴이 아니면 클릭 무시
+    if (!isMyTurn) return;
+    if (actionMode !== 'wall') return;
+
     const current = turn === 1 ? player1 : player2;
     if (current.wallCount <= 0) return;
     if (!canPlaceWall(x, y, orientation)) return;
@@ -130,23 +149,21 @@ function App() {
     let nextState = { 
       p1: turn === 1 ? { ...player1, wallCount: player1.wallCount - 1 } : player1,
       p2: turn === 2 ? { ...player2, wallCount: player2.wallCount - 1 } : player2,
-      turn: turn === 1 ? 2 : 1,
+      turn: turn === 1 ? 2 : 1, // 턴 넘기기
       walls: nextWalls,
       winner: null
     };
-    syncWithServer(nextState);
+
     emitAction(nextState);
   };
 
   return (
     <div className="container">
-      {/* 로비 오버레이 */}
+      {/* 로비 */}
       {!isGameStarted && (
         <div className="lobby-overlay">
           <div className="lobby-card">
             <h2 className="lobby-title">QUORIDOR ONLINE</h2>
-            
-            {/* 1. 역할 선택 */}
             {!myRole && (
               <div className="role-selection">
                 <p>플레이할 색상을 선택하세요</p>
@@ -160,8 +177,6 @@ function App() {
                 </div>
               </div>
             )}
-
-            {/* 2. 대기 화면 */}
             {myRole && (
               <div className="ready-section">
                 <p className="my-role-text">당신은 <span className={myRole===1?'t-white':'t-black'}>{myRole===1?'백색(P1)':'흑색(P2)'}</span> 입니다</p>
@@ -179,7 +194,7 @@ function App() {
         </div>
       )}
 
-      {/* 게임 화면 (블러 처리 및 레이아웃 수정) */}
+      {/* 게임 보드 */}
       <div className={`game-wrapper ${!isGameStarted ? 'blurred' : ''}`}>
         <header className="header">
           <h1 className="game-title">QUORIDOR</h1>
@@ -191,6 +206,7 @@ function App() {
             <h2 className="player-label">백색 (P1)</h2>
             <div className="wall-counter white-box"><div className="count">{player1.wallCount}</div></div>
             <div className="button-group">
+              {/* 내 턴일 때만 버튼 활성화 */}
               <button className={`btn p1-btn ${actionMode==='move'?'selected':''}`} onClick={()=>setActionMode('move')} disabled={!isMyTurn||winner}>이동</button>
               <button className={`btn p1-btn ${actionMode==='wall'?'selected':''}`} onClick={()=>setActionMode('wall')} disabled={!isMyTurn||winner}>벽</button>
             </div>
