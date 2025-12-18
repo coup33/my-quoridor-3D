@@ -224,3 +224,11 @@ body {
 .modal { background: white; padding: 40px; border-radius: 20px; text-align: center; }
 .reset-large { margin-top: 20px; padding: 10px 30px; background: #27ae60; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
 .reset-float { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: #343a40; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; }
+
+.opponent-status {
+  padding: 20px;
+  color: #adb5bd;
+  font-weight: bold;
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+}
