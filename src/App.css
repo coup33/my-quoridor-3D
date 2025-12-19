@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Absolute Fix Logic) */
+/* App.css - Quoridor Web Game Style (Final Polish: Margin Adjustments) */
 
 * {
   box-sizing: border-box;
@@ -182,11 +182,11 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 전략: 상단/하단 절대 고정(Anchored) + 중앙 유동 배치
+   ★ 전략: 상단/하단 고정 + 여백 미세 조정
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    /* 보드 크기: 6.0vmin (공간 확보됨) */
+    /* 보드 크기: 6.0vmin */
     --cell: 6.0vmin; 
     --gap: 1vmin;
     --pawn: 4.2vmin;
@@ -199,10 +199,11 @@ body {
     padding-top: 0;
   }
 
-  /* 2. [상단 고정] 타이틀 */
+  /* 2. [상단 고정] 타이틀 - 위쪽 여백 축소 */
   .game-title {
     position: absolute; 
-    top: 5px;
+    /* ★ 수정: 위로 더 바짝 붙임 (5px -> 2px) */
+    top: 2px;
     left: 50%;
     transform: translateX(-50%);
     width: auto;
@@ -217,6 +218,7 @@ body {
   /* 3. [상단 고정] 메뉴 버튼 */
   .menu-float { 
     position: absolute;
+    /* 타이틀 위치에 맞춰 미세 조정 */
     top: 5px; 
     right: 15px;
     bottom: auto; left: auto;
@@ -225,10 +227,11 @@ body {
     z-index: 200;
   }
 
-  /* 4. [하단 고정] ★ 중요: App.jsx에서 붙여준 pos-bottom 클래스를 사용 */
+  /* 4. [하단 고정] 행동 버튼 뭉치 (내 패널) - 아래 여백 확대 */
   .side-panel.pos-bottom {
-    position: absolute; /* 절대 위치로 바닥에 붙임 */
-    bottom: 20px;
+    position: absolute;
+    /* ★ 수정: 바닥에서 더 위로 띄움 (20px -> 35px) */
+    bottom: 35px;
     left: 50%;
     transform: translateX(-50%);
     
@@ -244,7 +247,6 @@ body {
     align-items: center;
     white-space: nowrap;
     
-    /* 배경이 있어야 보드판 위에 떴을 때 잘 보임 */
     background: #343a40;
     box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
   }
@@ -254,9 +256,9 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    /* 상단(타이틀), 하단(패널) 공간을 피해 중앙에 배치 */
+    /* ★ 수정: 상하단 고정 요소 영역 침범 방지를 위해 패딩 조정 */
     padding-top: 50px; 
-    padding-bottom: 80px; 
+    padding-bottom: 90px; /* 하단 버튼이 올라온 만큼 패딩도 늘림 */
     
     justify-content: space-evenly; 
     align-items: center;
