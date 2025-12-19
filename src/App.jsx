@@ -24,6 +24,12 @@ const playSound = (name) => {
   }
 };
 
+const enterFullScreen = () => {
+  const doc = document.documentElement;
+  if (doc.requestFullscreen) doc.requestFullscreen().catch(err => console.log(err));
+  else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
+};
+
 const TimeBar = ({ time, maxTime = 90, left, center, right }) => {
   const percentage = Math.min(100, Math.max(0, (time / maxTime) * 100));
   let statusClass = '';
@@ -49,6 +55,42 @@ const TimeBar = ({ time, maxTime = 90, left, center, right }) => {
   );
 };
 
+// --- ★ [추가] 클라이언트 사이드 길 찾기 (BFS) 로직 ---
+// 벽에 의해 막히는지 확인
+const isBlocked = (cx, cy, tx, ty, walls) => {
+  if (ty < cy) return walls.some(w => w.orientation === 'h' && w.y === ty && (w.x === cx || w.x === cx - 1));
+  if (ty > cy) return walls.some(w => w.orientation === 'h' && w.y === cy && (w.x === cx || w.x === cx - 1));
+  if (tx < cx) return walls.some(w => w.orientation === 'v' && w.x === tx && (w.y === cy || w.y === cy - 1));
+  if (tx > cx) return walls.some(w => w.orientation === 'v' && w.x === cx && (w.y === cy || w.y === cy - 1));
+  return false;
+};
+
+// 특정 플레이어가 목표 지점에 도달할 수 있는지 확인 (BFS)
+const hasPath = (startNode, targetRow, currentWalls) => {
+  const queue = [{ x: startNode.x, y: startNode.y }];
+  const visited = new Set();
+  visited.add(`${startNode.x},${startNode.y}`);
+  const directions = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current.y === targetRow) return true; // 도달 가능!
+
+    for (let dir of directions) {
+      const nx = current.x + dir.dx;
+      const ny = current.y + dir.dy;
+      if (nx >= 0 && nx < 9 && ny >= 0 && ny < 9) {
+        if (!visited.has(`${nx},${ny}`) && !isBlocked(current.x, current.y, nx, ny, currentWalls)) {
+          visited.add(`${nx},${ny}`);
+          queue.push({ x: nx, y: ny });
+        }
+      }
+    }
+  }
+  return false; // 길 없음
+};
+// ----------------------------------------------------
+
 function App() {
   const initialState = {
     p1: { x: 4, y: 0, wallCount: 10 },
@@ -69,23 +111,18 @@ function App() {
   const [walls, setWalls] = useState(initialState.walls);
   const [winner, setWinner] = useState(initialState.winner);
   const [winReason, setWinReason] = useState(initialState.winReason);
-  
   const [p1Time, setP1Time] = useState(initialState.p1Time);
   const [p2Time, setP2Time] = useState(initialState.p2Time);
-  
   const [lastMove, setLastMove] = useState(null);
   const [lastWall, setLastWall] = useState(null);
-  
   const [actionMode, setActionMode] = useState(null);
   const [myRole, setMyRole] = useState(null);
   const [takenRoles, setTakenRoles] = useState({ 1: null, 2: null });
   const [readyStatus, setReadyStatus] = useState({ 1: false, 2: false });
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [previewWall, setPreviewWall] = useState(null); 
-
   const [showDifficultySelect, setShowDifficultySelect] = useState(false);
   const [showMenu, setShowMenu] = useState(false); 
-
   const prevStateRef = useRef(initialState);
 
   useEffect(() => {
@@ -94,22 +131,30 @@ function App() {
       setTakenRoles(data.roles);
       setReadyStatus(data.readyStatus);
       setIsGameStarted(data.isGameStarted);
-      if (data.roles[1] === socket.id) setMyRole(1);
-      else if (data.roles[2] === socket.id) setMyRole(2);
-      else setMyRole(null);
+      // 만약 내 역할이 서버에서 사라졌으면(리셋 등) 클라이언트도 초기화
+      if (data.roles[1] !== socket.id && data.roles[2] !== socket.id) {
+         setMyRole(null);
+      } else {
+         if (data.roles[1] === socket.id) setMyRole(1);
+         else if (data.roles[2] === socket.id) setMyRole(2);
+      }
     });
 
     socket.on('game_start', (started) => {
       setIsGameStarted(started);
       if (started) {
         playSound('start');
+        enterFullScreen(); 
         prevStateRef.current = JSON.parse(JSON.stringify(initialState));
         setLastMove(null);
         setLastWall(null);
         setShowDifficultySelect(false);
         setShowMenu(false);
+        setWinner(null); // 승리 상태 초기화
       } else {
-        setShowMenu(false); 
+        setShowMenu(false);
+        // 게임 종료(리셋) 시 winner 초기화
+        setWinner(null);
       }
     });
 
@@ -160,49 +205,63 @@ function App() {
 
   const emitAction = (newState) => socket.emit('game_action', newState);
   const selectRole = (role) => socket.emit('select_role', role);
-  const toggleReady = () => myRole && socket.emit('player_ready', myRole);
-  const resetGame = () => { socket.emit('reset_game'); };
+  
+  const toggleReady = () => {
+    enterFullScreen();
+    if (myRole) socket.emit('player_ready', myRole);
+  };
+  
+  // ★ [수정] 나가기: 내 역할도 null로 만들고 서버 리셋 요청
+  const resetGame = () => { 
+    setMyRole(null); // 클라이언트 역할 해제
+    socket.emit('reset_game'); 
+  };
+  
   const resignGame = () => { if(window.confirm("정말 기권하시겠습니까?")) socket.emit('resign_game'); };
-  const startAiGame = (difficulty) => { socket.emit('start_ai_game', difficulty); };
+  const startAiGame = (difficulty) => { 
+    enterFullScreen();
+    socket.emit('start_ai_game', difficulty); 
+  };
 
   const isMyTurn = turn === myRole;
 
-  const isBlockedByWall = (currentX, currentY, targetX, targetY, currentWalls) => {
-    if (targetY < currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === targetY && (w.x === currentX || w.x === currentX - 1));
-    if (targetY > currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === currentY && (w.x === currentX || w.x === currentX - 1));
-    if (targetX < currentX) return currentWalls.some(w => w.orientation === 'v' && w.x === targetX && (w.y === currentY || w.y === currentY - 1));
-    if (targetX > currentX) return currentWalls.some(w => w.orientation === 'v' && w.x === currentX && (w.y === currentY || w.y === currentY - 1));
-    return false;
-  };
-
-  const isValidStep = (x1, y1, x2, y2, currentWalls) => {
-    if (x2 < 0 || x2 > 8 || y2 < 0 || y2 > 8) return false;
-    if (Math.abs(x1 - x2) + Math.abs(y1 - y2) !== 1) return false;
-    return !isBlockedByWall(x1, y1, x2, y2, currentWalls);
-  };
-
+  // 이동 가능 여부 (벽 확인 포함)
   const isMoveable = (targetX, targetY) => {
     if (!isGameStarted || !isMyTurn || actionMode !== 'move' || winner) return false;
     const current = turn === 1 ? player1 : player2;
     const opponent = turn === 1 ? player2 : player1;
+    
+    // 1칸 이동
     if (isValidStep(current.x, current.y, targetX, targetY, walls)) {
       if (!(targetX === opponent.x && targetY === opponent.y)) return true;
     }
+    // 점프
     if (isValidStep(current.x, current.y, opponent.x, opponent.y, walls)) {
       const dx = opponent.x - current.x;
       const dy = opponent.y - current.y;
       const jumpX = opponent.x + dx;
       const jumpY = opponent.y + dy;
       if (targetX === jumpX && targetY === jumpY) return isValidStep(opponent.x, opponent.y, jumpX, jumpY, walls);
+      // 대각선 점프 (점프 막혔을 때)
       if (isValidStep(opponent.x, opponent.y, targetX, targetY, walls)) {
-        const isJumpBlocked = jumpX < 0 || jumpX > 8 || jumpY < 0 || jumpY > 8 || isBlockedByWall(opponent.x, opponent.y, jumpX, jumpY, walls);
+        const isJumpBlocked = jumpX < 0 || jumpX > 8 || jumpY < 0 || jumpY > 8 || isBlocked(opponent.x, opponent.y, jumpX, jumpY, walls);
         if (isJumpBlocked && Math.abs(targetX - current.x) === 1 && Math.abs(targetY - current.y) === 1) return true;
       }
     }
     return false;
   };
+
+  const isValidStep = (x1, y1, x2, y2, currentWalls) => {
+    if (x2 < 0 || x2 > 8 || y2 < 0 || y2 > 8) return false;
+    if (Math.abs(x1 - x2) + Math.abs(y1 - y2) !== 1) return false;
+    return !isBlocked(x1, y1, x2, y2, currentWalls);
+  };
+
+  // ★ [수정] 벽 놓기 가능 여부 (길 막기 방지 로직 추가)
   const canPlaceWall = (x, y, orientation) => {
     if (!isGameStarted || !isMyTurn || winner) return false;
+    
+    // 1. 겹침 확인
     const isOverlap = walls.some(w => {
       if (w.x === x && w.y === y && w.orientation === orientation) return true;
       if (w.orientation === orientation) {
@@ -213,8 +272,22 @@ function App() {
       return false;
     });
     if (isOverlap) return false;
+
+    // 2. ★ 길 막기 확인 (BFS)
+    // 가상의 벽을 추가해봄
+    const simulatedWalls = [...walls, { x, y, orientation }];
+    
+    // P1이 목표(y=8)에 갈 수 있나?
+    const p1CanReach = hasPath(player1, 8, simulatedWalls);
+    // P2가 목표(y=0)에 갈 수 있나?
+    const p2CanReach = hasPath(player2, 0, simulatedWalls);
+
+    // 둘 중 하나라도 못 가면 벽 설치 불가
+    if (!p1CanReach || !p2CanReach) return false;
+
     return true; 
   };
+
   const handleCellClick = (x, y) => {
     setPreviewWall(null); 
     if (!isMyTurn) return;
@@ -224,6 +297,7 @@ function App() {
     else { nextState.p2 = { ...player2, x, y }; if (nextState.p2.y === 0) { nextState.winner = 2; nextState.winReason='goal'; } }
     emitAction(nextState);
   };
+
   const handleWallClick = (x, y, orientation) => {
     if (!isMyTurn || actionMode !== 'wall') return;
     const current = turn === 1 ? player1 : player2;
@@ -267,8 +341,8 @@ function App() {
   }
 
   let turnIndicator = null;
+  let resultTitle = ""; // 결과 타이틀 미리 선언
   if (winner) {
-    let resultTitle = "";
     const isWin = winner === myRole;
     if (isSpectator) resultTitle = winner === 1 ? "백색 승리!" : "흑색 승리!";
     else resultTitle = isWin ? "승리!" : "패배...";
@@ -342,9 +416,9 @@ function App() {
         </div>
       )}
 
-      <div className={`game-wrapper ${!isGameStarted ? 'blurred' : ''}`}>
+      {/* 게임 화면 래퍼 */}
+      <div className={`game-wrapper ${!isGameStarted || (winner) ? 'blurred' : ''}`}>
         <main className="main-content">
-          {/* P1 패널 */}
           <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 3 : 1 }}>
             <div className="wall-counter white-box">벽: <span className="count">{player1.wallCount}</span></div>
             {myRole === 1 ? (
@@ -399,7 +473,6 @@ function App() {
             <TimeBar time={bottomTime} />
           </section>
 
-          {/* P2 패널 */}
           <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 1 : 3 }}>
             <div className="wall-counter black-box">벽: <span className="count">{player2.wallCount}</span></div>
             {myRole === 2 ? (
@@ -414,18 +487,10 @@ function App() {
         {isGameStarted && !isSpectator && (
           <button className="menu-float" onClick={() => setShowMenu(true)}>MENU</button>
         )}
-        
-        {showMenu && (
-          <div className="lobby-overlay" onClick={() => setShowMenu(false)}>
-             <div className="lobby-card" onClick={(e) => e.stopPropagation()}>
-               <div className="menu-title">GAME MENU</div>
-               <button className="menu-btn btn-exit" onClick={resetGame}>나가기 (Exit Game)</button>
-               <button className="menu-btn btn-close" onClick={() => setShowMenu(false)}>닫기 (Close)</button>
-             </div>
-          </div>
-        )}
+      </div>
 
-        {winner && (
+      {/* ★ [수정] 결과 모달을 game-wrapper 밖으로 빼서 블러 효과 안 먹게 하고 최상위로 올림 */}
+      {winner && (
           <div className="overlay">
             <div className="modal">
               <h2>{resultTitle}</h2>
@@ -433,8 +498,18 @@ function App() {
               <button className="reset-large" onClick={resetGame}>로비로</button>
             </div>
           </div>
-        )}
-      </div>
+      )}
+
+      {/* 메뉴 모달도 밖으로 */}
+      {showMenu && (
+          <div className="lobby-overlay" onClick={() => setShowMenu(false)}>
+             <div className="lobby-card" onClick={(e) => e.stopPropagation()}>
+               <div className="menu-title">GAME MENU</div>
+               <button className="menu-btn btn-exit" onClick={resetGame}>나가기 (Exit Game)</button>
+               <button className="menu-btn btn-close" onClick={() => setShowMenu(false)}>닫기 (Close)</button>
+             </div>
+          </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-/* App.css - Standard Stable Layout (Clean Reset) */
+/* App.css - demo_version_1 (Stable Standard Layout + Ghost Fix) */
 
 * {
   box-sizing: border-box;
@@ -36,16 +36,22 @@ body {
   background-color: #212529;
   color: #f8f9fa;
   overflow: hidden;
+  /* 억지 고정(fixed) 제거하고 원래대로 */
+  width: 100vw;
+  height: 100vh;
 }
 
 .container {
-  width: 100vw;
-  height: 100vh; 
-  height: 100dvh; 
+  width: 100%;
+  height: 100%; 
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  
+  /* ★ 데스크탑 왼쪽 쏠림 방지용 안전장치 */
   justify-content: center;
+  align-items: center; 
+  
   position: relative;
 }
 
@@ -138,8 +144,15 @@ body {
 .pawn { width: var(--pawn); height: var(--pawn); border-radius: 50%; z-index: 5; box-shadow: 0 2px 5px rgba(0,0,0,0.5); transition: 0.2s; }
 .white-pawn { background: #f8f9fa; } .black-pawn { background: #212529; border: 2px solid #868e96; }
 .move-dot { width: 25%; height: 25%; background: rgba(0,0,0,0.3); border-radius: 50%; }
+
+/* ★ [수정] 흑색 잔상이 잘 보이도록 테두리 색상 변경 */
 .ghost-pawn { width: var(--pawn); height: var(--pawn); border-radius: 50%; position: absolute; z-index: 4; opacity: 0.4; pointer-events: none; transform: scale(0.8); box-shadow: none; }
-.ghost-white { background: #f8f9fa; border: 2px dashed #adb5bd; } .ghost-black { background: #212529; border: 2px dashed #868e96; }
+.ghost-white { background: #f8f9fa; border: 2px dashed #adb5bd; } 
+.ghost-black { 
+  background: #212529; 
+  border: 2px dashed rgba(255, 255, 255, 0.7); /* 밝은 회색 테두리로 변경 */
+}
+
 .wall-target { position: absolute; z-index: 10; transition: background 0.2s; }
 .wall-target.in-wall-mode { cursor: pointer; }
 .wall-target.placeable:hover { background: rgba(252, 196, 25, 0.6); }
@@ -156,22 +169,18 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 로비 정상화 및 순차적 배치 (Standard Layout) ★
+   [demo_version_1]: 가장 안정적이고 깨지지 않는 기본형
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    /* ★ 수정: 보드 크기 대폭 확대 (5.5 -> 8.8) */
-    /* 가로폭(행동버튼)에 얼추 맞게 꽉 채움 */
-    --cell: 8.8vmin; 
-    
+    /* 초기 완벽했던 비율: 6.0vmin (과도하게 크지 않음) */
+    --cell: 6.0vmin; 
     --gap: 1vmin;
-    
-    /* 셀이 커진 만큼 말과 벽도 비율에 맞춰 키움 */
-    --pawn: 6.0vmin; 
-    --wall-thick: 1.5vmin; 
+    --pawn: 4.2vmin;
+    --wall-thick: 1.0vmin;
   }
 
-  /* 1. 컨테이너: 중앙 정렬 (로비 복구) */
+  /* 1. 컨테이너: 중앙 정렬 */
   .container {
     justify-content: center; 
     padding-top: 0;
@@ -182,7 +191,7 @@ body {
     position: relative;
     top: auto; left: auto; transform: none; writing-mode: horizontal-tb;
     width: 100%; text-align: center;
-    margin: 5px 0; 
+    margin: 5px 0;
     font-size: 1.5rem; letter-spacing: 2px;
     z-index: 50;
   }
@@ -194,13 +203,13 @@ body {
     padding: 6px 12px; font-size: 0.8rem; z-index: 200;
   }
 
-  /* 4. 메인 콘텐츠: 위에서 아래로 순서대로 쌓음 */
+  /* 4. 메인 콘텐츠: 스택형 배치 */
   .main-content {
     flex: 1;
     display: flex; flex-direction: column;
-    justify-content: center; /* 내용물 중앙 정렬 */
+    justify-content: center; 
     align-items: center;
-    gap: 10px; /* 요소 간 간격 */
+    gap: 10px;
     padding: 10px 0;
     height: auto;
   }
@@ -222,7 +231,7 @@ body {
     justify-content: center; align-items: center;
   }
 
-  /* 타임바 & 턴 정보 */
+  /* 타임바 */
   .time-bar-container { 
     width: 90%; max-width: 320px; 
     margin-top: 5px; 
