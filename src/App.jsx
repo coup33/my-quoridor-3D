@@ -1,395 +1,435 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
-import './App.css';
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
 
-const socket = io('https://my-quoridor.onrender.com');
+const app = express();
+app.use(cors());
 
-const sounds = {
-  move: new Audio('/sounds/move.mp3'),
-  wall: new Audio('/sounds/wall.mp3'),
-  start: new Audio('/sounds/start.mp3'),
-  win: new Audio('/sounds/win.mp3'),
-  lose: new Audio('/sounds/lose.mp3'),
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: "*", methods: ["GET", "POST"] }
+});
+
+const MAX_TIME = 90; 
+const START_TIME = 60;
+const INCREMENT = 6;  
+
+const INITIAL_GAME_STATE = {
+  p1: { x: 4, y: 0, wallCount: 10 },
+  p2: { x: 4, y: 8, wallCount: 10 },
+  turn: 1,
+  walls: [],
+  winner: null,
+  p1Time: START_TIME,
+  p2Time: START_TIME,
+  lastMove: null, 
+  lastWall: null,
+  isVsAI: false,
+  aiDifficulty: 1 
 };
 
-const playSound = (name) => {
-  try {
-    const audio = sounds[name];
-    if (audio) {
-      audio.currentTime = 0;
-      audio.play().catch(e => console.log("Audio play failed:", e));
-    }
-  } catch (err) {
-    console.error(err);
-  }
+let gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
+let roles = { 1: null, 2: null };
+let readyStatus = { 1: false, 2: false };
+let isGameStarted = false;
+let gameInterval = null;
+
+// --- 🧠 AI Helper Functions (길찾기 & 검증) ---
+
+// 좌표가 보드 내부인지 확인
+const inBoard = (x, y) => x >= 0 && x < 9 && y >= 0 && y < 9;
+
+// 벽 충돌 체크
+const isBlocked = (cx, cy, tx, ty, walls) => {
+  if (ty < cy) return walls.some(w => w.orientation === 'h' && w.y === ty && (w.x === cx || w.x === cx - 1));
+  if (ty > cy) return walls.some(w => w.orientation === 'h' && w.y === cy && (w.x === cx || w.x === cx - 1));
+  if (tx < cx) return walls.some(w => w.orientation === 'v' && w.x === tx && (w.y === cy || w.y === cy - 1));
+  if (tx > cx) return walls.some(w => w.orientation === 'v' && w.x === cx && (w.y === cy || w.y === cy - 1));
+  return false;
 };
 
-const TimeBar = ({ time, maxTime = 90 }) => {
-  const percentage = Math.min(100, Math.max(0, (time / maxTime) * 100));
-  let statusClass = '';
-  if (time < 10) statusClass = 'danger';
-  else if (time < 30) statusClass = 'warning';
-
-  return (
-    <div className="time-bar-wrapper">
-      <div className={`time-bar-fill ${statusClass}`} style={{ width: `${percentage}%` }}/>
-      <div className="time-text">{time}s</div>
-    </div>
-  );
-};
-
-function App() {
-  const initialState = {
-    p1: { x: 4, y: 0, wallCount: 10 },
-    p2: { x: 4, y: 8, wallCount: 10 },
-    turn: 1,
-    walls: [],
-    winner: null,
-    p1Time: 60,
-    p2Time: 60,
-    lastMove: null, 
-    lastWall: null
-  };
-
-  const [player1, setPlayer1] = useState(initialState.p1);
-  const [player2, setPlayer2] = useState(initialState.p2);
-  const [turn, setTurn] = useState(initialState.turn);
-  const [walls, setWalls] = useState(initialState.walls);
-  const [winner, setWinner] = useState(initialState.winner);
-  const [p1Time, setP1Time] = useState(initialState.p1Time);
-  const [p2Time, setP2Time] = useState(initialState.p2Time);
+// BFS: 최단 경로와 거리 계산
+const getPathData = (startNode, targetRow, currentWalls) => {
+  const queue = [{ x: startNode.x, y: startNode.y, dist: 0, parent: null }];
+  const visited = new Set();
+  visited.add(`${startNode.x},${startNode.y}`);
+  const directions = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }];
   
-  const [lastMove, setLastMove] = useState(null);
-  const [lastWall, setLastWall] = useState(null);
-  
-  const [actionMode, setActionMode] = useState(null);
-  const [myRole, setMyRole] = useState(null);
-  const [takenRoles, setTakenRoles] = useState({ 1: null, 2: null });
-  const [readyStatus, setReadyStatus] = useState({ 1: false, 2: false });
-  const [isGameStarted, setIsGameStarted] = useState(false);
-  const [previewWall, setPreviewWall] = useState(null); 
-
-  const [showDifficultySelect, setShowDifficultySelect] = useState(false);
-
-  const prevStateRef = useRef(initialState);
-
-  useEffect(() => {
-    socket.emit('request_lobby');
-    socket.on('lobby_update', (data) => {
-      setTakenRoles(data.roles);
-      setReadyStatus(data.readyStatus);
-      setIsGameStarted(data.isGameStarted);
-      if (data.roles[1] === socket.id) setMyRole(1);
-      else if (data.roles[2] === socket.id) setMyRole(2);
-      else setMyRole(null);
-    });
-
-    socket.on('game_start', (started) => {
-      setIsGameStarted(started);
-      if (started) {
-        playSound('start');
-        prevStateRef.current = JSON.parse(JSON.stringify(initialState));
-        setLastMove(null);
-        setLastWall(null);
-        setShowDifficultySelect(false);
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current.y === targetRow) {
+      // 경로 역추적
+      let path = [];
+      let temp = current;
+      while (temp) {
+        path.unshift({ x: temp.x, y: temp.y });
+        temp = temp.parent;
       }
-    });
-
-    socket.on('update_state', (state) => syncWithServer(state));
-    socket.on('init_state', (state) => syncWithServer(state));
-
-    return () => {
-      socket.off('lobby_update');
-      socket.off('game_start');
-      socket.off('update_state');
-      socket.off('init_state');
-    };
-  }, [myRole]);
-
-  const syncWithServer = (state) => {
-    if (!state) return;
-    const prev = prevStateRef.current;
-    
-    if (prev.p1.x !== state.p1.x || prev.p1.y !== state.p1.y || 
-        prev.p2.x !== state.p2.x || prev.p2.y !== state.p2.y) playSound('move');
-
-    if ((state.walls || []).length > (prev.walls || []).length) playSound('wall');
-
-    if (state.winner && !prev.winner) {
-      if (myRole === 1 || myRole === 2) {
-        if (state.winner === myRole) playSound('win');
-        else playSound('lose');
-      } else playSound('win');
-    }
-
-    if (prev.turn !== state.turn) {
-      setPreviewWall(null);
-      setActionMode(null);
-    }
-
-    prevStateRef.current = state;
-    setPlayer1(state.p1);
-    setPlayer2(state.p2);
-    setTurn(state.turn);
-    setWalls(state.walls || []);
-    setWinner(state.winner);
-    setP1Time(state.p1Time);
-    setP2Time(state.p2Time);
-    setLastMove(state.lastMove);
-    setLastWall(state.lastWall);
-  };
-
-  const emitAction = (newState) => socket.emit('game_action', newState);
-  const selectRole = (role) => socket.emit('select_role', role);
-  const toggleReady = () => myRole && socket.emit('player_ready', myRole);
-  const resetGame = () => socket.emit('reset_game');
-  const resignGame = () => { if(window.confirm("정말 기권하시겠습니까?")) socket.emit('resign_game'); };
-
-  const startAiGame = (difficulty) => {
-    socket.emit('start_ai_game', difficulty);
-  };
-
-  const isMyTurn = turn === myRole;
-
-  const isBlockedByWall = (currentX, currentY, targetX, targetY, currentWalls) => {
-    if (targetY < currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === targetY && (w.x === currentX || w.x === currentX - 1));
-    if (targetY > currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === currentY && (w.x === currentX || w.x === currentX - 1));
-    if (targetX < currentX) return currentWalls.some(w => w.orientation === 'v' && w.x === targetX && (w.y === currentY || w.y === currentY - 1));
-    if (targetX > currentX) return currentWalls.some(w => w.orientation === 'v' && w.x === currentX && (w.y === currentY || w.y === currentY - 1));
-    return false;
-  };
-
-  const isValidStep = (x1, y1, x2, y2, currentWalls) => {
-    if (x2 < 0 || x2 > 8 || y2 < 0 || y2 > 8) return false;
-    if (Math.abs(x1 - x2) + Math.abs(y1 - y2) !== 1) return false;
-    return !isBlockedByWall(x1, y1, x2, y2, currentWalls);
-  };
-
-  const isMoveable = (targetX, targetY) => {
-    if (!isGameStarted || !isMyTurn || actionMode !== 'move' || winner) return false;
-    const current = turn === 1 ? player1 : player2;
-    const opponent = turn === 1 ? player2 : player1;
-    
-    if (isValidStep(current.x, current.y, targetX, targetY, walls)) {
-      if (!(targetX === opponent.x && targetY === opponent.y)) return true;
-    }
-    if (isValidStep(current.x, current.y, opponent.x, opponent.y, walls)) {
-      const dx = opponent.x - current.x;
-      const dy = opponent.y - current.y;
-      const jumpX = opponent.x + dx;
-      const jumpY = opponent.y + dy;
-      if (targetX === jumpX && targetY === jumpY) return isValidStep(opponent.x, opponent.y, jumpX, jumpY, walls);
-      if (isValidStep(opponent.x, opponent.y, targetX, targetY, walls)) {
-        const isJumpBlocked = jumpX < 0 || jumpX > 8 || jumpY < 0 || jumpY > 8 || isBlockedByWall(opponent.x, opponent.y, jumpX, jumpY, walls);
-        if (isJumpBlocked && Math.abs(targetX - current.x) === 1 && Math.abs(targetY - current.y) === 1) return true;
-      }
-    }
-    return false;
-  };
-
-  const canPlaceWall = (x, y, orientation) => {
-    if (!isGameStarted || !isMyTurn || winner) return false;
-    const isOverlap = walls.some(w => {
-      if (w.x === x && w.y === y && w.orientation === orientation) return true;
-      if (w.orientation === orientation) {
-        if (orientation === 'h' && w.y === y && Math.abs(w.x - x) === 1) return true;
-        if (orientation === 'v' && w.x === x && Math.abs(w.y - y) === 1) return true;
-      }
-      if (w.x === x && w.y === y && w.orientation !== orientation) return true;
-      return false;
-    });
-    if (isOverlap) return false;
-    // Client-side simple check or rely on server validation
-    return true; // Simplify client check for speed, server validates path
-  };
-
-  const handleCellClick = (x, y) => {
-    setPreviewWall(null); 
-    if (!isMyTurn) return;
-    if (!isMoveable(x, y)) return;
-    
-    let nextState = { p1: player1, p2: player2, turn: turn === 1 ? 2 : 1, walls, winner: null };
-    if (turn === 1) {
-      nextState.p1 = { ...player1, x, y };
-      if (nextState.p1.y === 8) nextState.winner = 1;
-    } else {
-      nextState.p2 = { ...player2, x, y };
-      if (nextState.p2.y === 0) nextState.winner = 2;
-    }
-    emitAction(nextState);
-  };
-
-  const handleWallClick = (x, y, orientation) => {
-    if (!isMyTurn || actionMode !== 'wall') return;
-    const current = turn === 1 ? player1 : player2;
-    if (current.wallCount <= 0) return;
-    if (!canPlaceWall(x, y, orientation)) { setPreviewWall(null); return; }
-
-    if (previewWall && previewWall.x === x && previewWall.y === y && previewWall.orientation === orientation) {
-      const nextWalls = [...walls, { x, y, orientation }];
-      let nextState = { 
-        p1: turn === 1 ? { ...player1, wallCount: player1.wallCount - 1 } : player1,
-        p2: turn === 2 ? { ...player2, wallCount: player2.wallCount - 1 } : player2,
-        turn: turn === 1 ? 2 : 1,
-        walls: nextWalls,
-        winner: null
+      return { 
+        distance: current.dist, 
+        nextStep: path.length > 1 ? path[1] : null, // 바로 다음 이동할 칸
+        fullPath: path // 전체 경로
       };
-      emitAction(nextState);
-      setPreviewWall(null);
-    } else {
-      setPreviewWall({ x, y, orientation });
     }
-  };
 
-  const getVWallStyle = (x, y) => ({ left: `calc(${x} * var(--unit) + var(--cell))`, top: `calc(${y} * var(--unit))` });
-  const getHWallStyle = (x, y) => ({ left: `calc(${x} * var(--unit))`, top: `calc(${y} * var(--unit) + var(--cell))` });
-  const getPlacedWallStyle = (wall) => {
-    if (wall.orientation === 'v') return { left: `calc(${wall.x} * var(--unit) + var(--cell))`, top: `calc(${wall.y} * var(--unit))` };
-    else return { left: `calc(${wall.x} * var(--unit))`, top: `calc(${wall.y} * var(--unit) + var(--cell))` };
-  };
-
-  const isSpectator = isGameStarted && myRole !== 1 && myRole !== 2;
-  const isFlipped = myRole === 1; 
-  const topTime = isFlipped ? p2Time : p1Time;
-  const bottomTime = isFlipped ? p1Time : p2Time;
-
-  let resultMessage = "";
-  if (winner) {
-    if (isSpectator) resultMessage = winner === 1 ? "백색 승리!" : "흑색 승리!";
-    else resultMessage = winner === myRole ? "승리!" : "패배...";
+    for (let dir of directions) {
+      const nx = current.x + dir.dx;
+      const ny = current.y + dir.dy;
+      if (inBoard(nx, ny)) {
+        if (!visited.has(`${nx},${ny}`) && !isBlocked(current.x, current.y, nx, ny, currentWalls)) {
+          visited.add(`${nx},${ny}`);
+          queue.push({ x: nx, y: ny, dist: current.dist + 1, parent: current });
+        }
+      }
+    }
   }
+  return null; // 길 없음
+};
 
-  return (
-    <div className="container">
-      <div className="game-title">QUORIDOR</div>
+// 벽 유효성 검사 (겹침 + 길 막힘)
+const isValidWall = (x, y, orientation, currentWalls, p1Pos, p2Pos) => {
+  if (x < 0 || x > 7 || y < 0 || y > 7) return false;
 
-      {!isGameStarted && (
-        <div className="lobby-overlay">
-          <div className="lobby-card">
-            <h2 style={{marginBottom: '20px'}}>QUORIDOR ONLINE</h2>
+  // 1. 겹침 체크
+  const isOverlap = currentWalls.some(w => {
+    if (w.x === x && w.y === y && w.orientation === orientation) return true;
+    if (w.orientation === orientation) {
+      if (orientation === 'h' && w.y === y && Math.abs(w.x - x) === 1) return true;
+      if (orientation === 'v' && w.x === x && Math.abs(w.y - y) === 1) return true;
+    }
+    if (w.x === x && w.y === y && w.orientation !== orientation) return true;
+    return false;
+  });
+  if (isOverlap) return false;
+
+  // 2. 길 막힘 체크 (Pathfinding)
+  const simulatedWalls = [...currentWalls, { x, y, orientation }];
+  const p1Path = getPathData(p1Pos, 8, simulatedWalls); // P1은 아래(8)로
+  const p2Path = getPathData(p2Pos, 0, simulatedWalls); // P2(AI)는 위(0)로
+  
+  return p1Path !== null && p2Path !== null;
+};
+
+// --- 🤖 AI 핵심 두뇌 (난이도별 로직) ---
+const processAIMove = () => {
+  if (gameState.winner) return;
+
+  // 1초 딜레이 (사람처럼 생각하는 척)
+  setTimeout(() => {
+    const p2Pos = { x: gameState.p2.x, y: gameState.p2.y }; // AI
+    const p1Pos = { x: gameState.p1.x, y: gameState.p1.y }; // 사람
+    const walls = gameState.walls;
+    const difficulty = gameState.aiDifficulty;
+    const wallCount = gameState.p2.wallCount;
+
+    let moveAction = null; // { x, y }
+    let wallAction = null; // { x, y, orientation }
+
+    // 기본적으로 '나'와 '상대'의 최단 경로를 계산
+    const myPathData = getPathData(p2Pos, 0, walls);
+    const oppPathData = getPathData(p1Pos, 8, walls);
+
+    // ----------------------------------------------------
+    // LEVEL 1: 매우 쉬움 (Very Easy)
+    // - 전략: 무조건 최단 경로로 이동만 한다. 벽 안 씀.
+    // ----------------------------------------------------
+    if (difficulty === 1) {
+       if (myPathData && myPathData.nextStep) {
+         moveAction = myPathData.nextStep;
+       }
+    }
+
+    // ----------------------------------------------------
+    // LEVEL 2: 쉬움 (Easy)
+    // - 전략: 주로 이동하지만, 20% 확률로 아무 데나 벽을 둔다. (트롤링 포함)
+    // ----------------------------------------------------
+    else if (difficulty === 2) {
+      const randomChance = Math.random();
+      
+      // 20% 확률로 벽 설치 시도
+      if (randomChance < 0.2 && wallCount > 0) {
+         for(let i=0; i<15; i++) { // 15번 랜덤 시도
+            const rx = Math.floor(Math.random() * 8);
+            const ry = Math.floor(Math.random() * 8);
+            const rOr = Math.random() > 0.5 ? 'h' : 'v';
             
-            {showDifficultySelect ? (
-               <div className="difficulty-overlay">
-                  <h3 style={{marginBottom:'10px'}}>난이도 선택</h3>
-                  <button className="diff-btn diff-1" onClick={() => startAiGame(1)}>🌱 매우 쉬움 (Very Easy)</button>
-                  <button className="diff-btn diff-2" onClick={() => startAiGame(2)}>🐣 쉬움 (Easy)</button>
-                  <button className="diff-btn diff-3" onClick={() => startAiGame(3)}>🛡️ 보통 (Normal)</button>
-                  <button className="diff-btn diff-4" onClick={() => startAiGame(4)}>🔥 어려움 (Hard)</button>
-                  <button className="diff-btn btn-back" onClick={() => setShowDifficultySelect(false)}>취소</button>
-               </div>
-            ) : (
-              <>
-                {!myRole && (
-                  <div className="role-selection">
-                    <div className="role-buttons">
-                      <button className="role-btn white" disabled={takenRoles[1] !== null} onClick={() => selectRole(1)}>
-                        백색 (P1) {takenRoles[1] && <span className="taken-badge">사용 중</span>}
-                      </button>
-                      <button className="role-btn black" disabled={takenRoles[2] !== null} onClick={() => selectRole(2)}>
-                        흑색 (P2) {takenRoles[2] && <span className="taken-badge">사용 중</span>}
-                      </button>
-                    </div>
-                    <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-                        <button className="start-btn" style={{ backgroundColor: '#4c6ef5' }} onClick={() => setShowDifficultySelect(true)}>
-                            🤖 AI와 연습하기 (싱글)
-                        </button>
-                    </div>
-                  </div>
-                )}
-                {myRole && (
-                  <div className="ready-section">
-                    <div className="status-box">
-                      <div className={`player-status ${readyStatus[1]?'ready':''}`}>P1: {readyStatus[1]?'준비 완료':'대기 중'}</div>
-                      <div className={`player-status ${readyStatus[2]?'ready':''}`}>P2: {readyStatus[2]?'준비 완료':'대기 중'}</div>
-                    </div>
-                    {!readyStatus[myRole] ? <button className="start-btn" onClick={toggleReady}>준비 하기</button> : <button className="start-btn waiting">대기 중...</button>}
-                    <button className="cancel-btn" onClick={() => socket.emit('select_role', 0)}>나가기</button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
+            if (isValidWall(rx, ry, rOr, walls, p1Pos, p2Pos)) {
+                wallAction = { x: rx, y: ry, orientation: rOr };
+                break;
+            }
+         }
+      }
+      
+      // 벽 결정 안 됐으면 이동
+      if (!wallAction && myPathData && myPathData.nextStep) {
+          moveAction = myPathData.nextStep;
+      }
+    }
 
-      <div className={`game-wrapper ${!isGameStarted ? 'blurred' : ''}`}>
-        <header className="header">
-          {isSpectator && <div className="spectator-badge">관전 모드</div>}
-        </header>
-        <main className="main-content">
-          <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 3 : 1 }}>
-            <div className="wall-counter white-box">남은 벽: <span className="count">{player1.wallCount}</span></div>
-            {myRole === 1 ? (
-              <div className="button-group">
-                <button className={`btn p1-btn ${actionMode==='move'?'selected':''}`} onClick={()=>setActionMode('move')} disabled={!isMyTurn||winner}>이동</button>
-                <button className={`btn p1-btn ${actionMode==='wall'?'selected':''}`} onClick={()=>setActionMode('wall')} disabled={!isMyTurn||winner}>벽</button>
-              </div>
-            ) : null}
-          </aside>
-          <section className="board-section" style={{ order: 2 }}>
-            <div className="turn-display">
-              {winner ? <span className="win-text">{resultMessage}</span> : <span className={turn===1?'t-white':'t-black'}>{turn===1?'● 백색 턴':'● 흑색 턴'}</span>}
-            </div>
-            <TimeBar time={topTime} />
-            <div className="board-container">
-              <div className="board" style={{ transform: isFlipped ? 'rotate(180deg)' : 'none' }}>
-                {Array.from({length:81}).map((_,i)=>{
-                  const x=i%9, y=Math.floor(i/9);
-                  const canMove=isMoveable(x,y);
-                  const isGhostP1 = lastMove && lastMove.player === 1 && lastMove.x === x && lastMove.y === y;
-                  const isGhostP2 = lastMove && lastMove.player === 2 && lastMove.x === x && lastMove.y === y;
-                  return (
-                    <div key={`c-${x}-${y}`} className={`cell ${canMove?'highlight':''}`} onClick={()=>handleCellClick(x,y)}>
-                      {player1.x===x&&player1.y===y&&<div className="pawn white-pawn"/>}
-                      {player2.x===x&&player2.y===y&&<div className="pawn black-pawn"/>}
-                      {isGhostP1 && <div className="ghost-pawn ghost-white"/>}
-                      {isGhostP2 && <div className="ghost-pawn ghost-black"/>}
-                      {canMove&&<div className="move-dot"/>}
-                    </div>
-                  );
-                })}
-                {Array.from({length:64}).map((_,i)=>{
-                  const x=i%8, y=Math.floor(i/8);
-                  const isWallMode=actionMode==='wall'&&isMyTurn;
-                  const canH=isWallMode&&canPlaceWall(x,y,'h');
-                  const canV=isWallMode&&canPlaceWall(x,y,'v');
-                  const isPreviewH = previewWall && previewWall.x===x && previewWall.y===y && previewWall.orientation==='h';
-                  const isPreviewV = previewWall && previewWall.x===x && previewWall.y===y && previewWall.orientation==='v';
-                  return (
-                    <React.Fragment key={`wp-${x}-${y}`}>
-                      <div className={`wall-target h ${isWallMode?'in-wall-mode':''} ${canH?'placeable':''} ${isPreviewH?'preview':''}`} style={getHWallStyle(x,y)} onClick={()=>handleWallClick(x,y,'h')}/>
-                      <div className={`wall-target v ${isWallMode?'in-wall-mode':''} ${canV?'placeable':''} ${isPreviewV?'preview':''}`} style={getVWallStyle(x,y)} onClick={()=>handleWallClick(x,y,'v')}/>
-                    </React.Fragment>
-                  );
-                })}
-                {(walls || []).map((wall,i)=>{
-                  const isLatest = lastWall && lastWall.x === wall.x && lastWall.y === wall.y && lastWall.orientation === wall.orientation;
-                  return (<div key={i} className={`placed-wall ${wall.orientation} ${isLatest?'latest':''}`} style={getPlacedWallStyle(wall)}/>);
-                })}
-              </div>
-            </div>
-            <TimeBar time={bottomTime} />
-            {!isSpectator && !winner && isGameStarted && (
-               <div className="controls-row">
-                 <button className="btn-resign" onClick={resignGame}>항복 (Resign)</button>
-               </div>
-            )}
-          </section>
-          <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 1 : 3 }}>
-            <div className="wall-counter black-box">남은 벽: <span className="count">{player2.wallCount}</span></div>
-            {myRole === 2 ? (
-              <div className="button-group">
-                <button className={`btn p2-btn ${actionMode==='move'?'selected':''}`} onClick={()=>setActionMode('move')} disabled={!isMyTurn||winner}>이동</button>
-                <button className={`btn p2-btn ${actionMode==='wall'?'selected':''}`} onClick={()=>setActionMode('wall')} disabled={!isMyTurn||winner}>벽</button>
-              </div>
-            ) : null}
-          </aside>
-        </main>
-        {isGameStarted && !isSpectator && <button className="reset-float" onClick={resetGame}>🔄</button>}
-        {winner && (<div className="overlay"><div className="modal"><h2>{resultMessage}</h2><button className="reset-large" onClick={resetGame}>로비로</button></div></div>)}
-      </div>
-    </div>
-  );
-}
+    // ----------------------------------------------------
+    // LEVEL 3: 보통 (Normal)
+    // - 전략: 상대가 목표지점 3칸 이내로 오면 급하게 막는다. 아니면 달린다.
+    // ----------------------------------------------------
+    else if (difficulty === 3) {
+      // 상대가 이기기 직전(거리 3 이하)이고 내 벽이 있으면 방어 시도
+      if (oppPathData && oppPathData.distance <= 3 && wallCount > 0) {
+         // 상대의 예상 경로 바로 앞을 막아본다
+         const nextNode = oppPathData.fullPath[1] || oppPathData.fullPath[0]; 
+         
+         // 막을 수 있는 후보 위치들 (상대 앞 가로/세로)
+         const candidates = [
+            { x: nextNode.x, y: nextNode.y, o: 'h' },     // 상대 발밑 가로
+            { x: nextNode.x - 1, y: nextNode.y, o: 'h' }, // 상대 발밑 왼쪽 가로
+            { x: nextNode.x, y: nextNode.y, o: 'v' },     // 상대 옆 세로
+            { x: nextNode.x, y: nextNode.y - 1, o: 'v' }  // 상대 옆 위 세로
+         ];
+         
+         for (let cand of candidates) {
+            if (isValidWall(cand.x, cand.y, cand.o, walls, p1Pos, p2Pos)) {
+                wallAction = { x: cand.x, y: cand.y, orientation: cand.o };
+                break; // 하나라도 성공하면 채택
+            }
+         }
+      }
 
-export default App;
+      // 방어할 필요 없거나 방어 실패 시 이동
+      if (!wallAction && myPathData && myPathData.nextStep) {
+          moveAction = myPathData.nextStep;
+      }
+    }
+
+    // ----------------------------------------------------
+    // LEVEL 4: 어려움 (Hard)
+    // - 전략: 시뮬레이션. 내가 불리하면(상대가 더 빠르면) 상대 경로를
+    //         가장 크게 늘릴 수 있는 '치명적인 벽'을 찾아 설치한다.
+    // ----------------------------------------------------
+    else if (difficulty === 4) {
+      const myDist = myPathData ? myPathData.distance : 999;
+      const oppDist = oppPathData ? oppPathData.distance : 999;
+
+      // 내가 지고 있거나(거리가 멀거나), 비슷할 때(1칸 차이) 견제 들어감
+      if (myDist >= oppDist - 1 && wallCount > 0) {
+         let bestWall = null;
+         let maxDelay = -1; // 상대를 얼마나 늦출 수 있는가?
+
+         // 상대방의 최단 경로 중 앞쪽 5스텝을 분석하여 방해
+         const checkNodes = oppPathData.fullPath.slice(0, 5);
+         
+         // 검사할 후보 벽 리스트 생성
+         let candidateWalls = [];
+         for (let node of checkNodes) {
+             candidateWalls.push(
+                { x: node.x, y: node.y, o: 'h' },
+                { x: node.x -1, y: node.y, o: 'h' },
+                { x: node.x, y: node.y - 1, o: 'h' }, // 한 칸 위도 체크
+                { x: node.x, y: node.y, o: 'v' },
+                { x: node.x, y: node.y -1, o: 'v' },
+                { x: node.x -1, y: node.y, o: 'v' } // 한 칸 옆도 체크
+             );
+         }
+
+         // 중복 제거 및 시뮬레이션
+         for (let cand of candidateWalls) {
+             if (isValidWall(cand.x, cand.y, cand.o, walls, p1Pos, p2Pos)) {
+                 // 가상으로 벽을 설치해보고 경로 재계산
+                 const simWalls = [...walls, {x:cand.x, y:cand.y, orientation:cand.o}];
+                 const simOppPath = getPathData(p1Pos, 8, simWalls);
+                 const simMyPath = getPathData(p2Pos, 0, simWalls); // 내 길도 막히는지 확인
+
+                 if (simOppPath && simMyPath) {
+                     const newOppDist = simOppPath.distance;
+                     const newMyDist = simMyPath.distance;
+                     
+                     // 점수 = (상대가 늘어난 거리) - (내가 늘어난 거리/2)
+                     // 즉, 나는 별로 손해 안 보고 상대를 많이 늦추는 벽이 최고
+                     const delayScore = (newOppDist - oppDist) - (newMyDist - myDist);
+
+                     // 상대를 2칸 이상 늦출 수 있다면 아주 좋은 벽
+                     if (delayScore > maxDelay && delayScore > 0) {
+                         maxDelay = delayScore;
+                         bestWall = { x: cand.x, y: cand.y, orientation: cand.o };
+                     }
+                 }
+             }
+         }
+         
+         // 좋은 방해 벽을 찾았다면 설치
+         if (bestWall && maxDelay > 0) {
+             wallAction = bestWall;
+         }
+      }
+
+      // 견제할 게 없거나 내가 유리하면 그냥 최단 거리 이동
+      if (!wallAction && myPathData && myPathData.nextStep) {
+          moveAction = myPathData.nextStep;
+      }
+    }
+    
+    // ----------------------------------------------------
+    // Fallback: 만약 어떤 이유로 아무 행동도 결정 안 됐으면 이동
+    if (!moveAction && !wallAction && myPathData && myPathData.nextStep) {
+        moveAction = myPathData.nextStep;
+    }
+
+    // 최종 상태 업데이트 적용
+    let newState = { ...gameState };
+    
+    if (wallAction) {
+        newState.walls.push(wallAction);
+        newState.p2.wallCount -= 1;
+        newState.lastWall = wallAction;
+        newState.lastMove = null; // 벽 뒀으면 이동 잔상 제거 (선택)
+    } else if (moveAction) {
+        newState.lastMove = { player: 2, x: gameState.p2.x, y: gameState.p2.y }; // 이전 위치 잔상
+        newState.lastWall = null;
+        newState.p2 = { ...gameState.p2, x: moveAction.x, y: moveAction.y };
+        if (newState.p2.y === 0) newState.winner = 2; // AI 승리 체크
+    } else {
+        console.log("AI: 할 수 있는 게 없어요..."); // 턴 넘김
+    }
+
+    // 턴 교체 및 시간 충전
+    newState.turn = 1;
+    newState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT);
+    
+    gameState = newState;
+    io.emit('update_state', gameState);
+
+  }, 1000); // 1초 후 행동
+};
+
+// --- Socket Handlers ---
+const broadcastLobby = () => io.emit('lobby_update', { roles, readyStatus, isGameStarted });
+
+const startGameTimer = () => {
+  if (gameInterval) clearInterval(gameInterval);
+  gameInterval = setInterval(() => {
+    if (!isGameStarted || gameState.winner) { clearInterval(gameInterval); return; }
+    if (gameState.turn === 1) {
+      gameState.p1Time -= 1;
+      if (gameState.p1Time <= 0) { gameState.p1Time = 0; gameState.winner = 2; io.emit('update_state', gameState); clearInterval(gameInterval); }
+    } else {
+      gameState.p2Time -= 1;
+      if (gameState.p2Time <= 0) { gameState.p2Time = 0; gameState.winner = 1; io.emit('update_state', gameState); clearInterval(gameInterval); }
+    }
+    if (!gameState.winner) io.emit('update_state', gameState);
+  }, 1000);
+};
+
+io.on('connection', (socket) => {
+  console.log(`[접속] ${socket.id}`);
+  socket.emit('lobby_update', { roles, readyStatus, isGameStarted });
+  if (isGameStarted) socket.emit('update_state', gameState);
+
+  socket.on('select_role', (role) => {
+    role = parseInt(role);
+    if (role === 0) {
+      if (roles[1]===socket.id) { roles[1]=null; readyStatus[1]=false; }
+      if (roles[2]===socket.id) { roles[2]=null; readyStatus[2]=false; }
+    } else {
+      if (roles[role] && roles[role] !== socket.id) return;
+      if (roles[1]===socket.id) { roles[1]=null; readyStatus[1]=false; }
+      if (roles[2]===socket.id) { roles[2]=null; readyStatus[2]=false; }
+      roles[role] = socket.id;
+    }
+    broadcastLobby();
+  });
+
+  socket.on('player_ready', (role) => {
+    if (roles[role] !== socket.id) return;
+    readyStatus[role] = !readyStatus[role];
+    broadcastLobby();
+    if (roles[1] && roles[2] && readyStatus[1] && readyStatus[2]) {
+      isGameStarted = true;
+      gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
+      io.emit('game_start', true);
+      io.emit('update_state', gameState);
+      broadcastLobby();
+      startGameTimer();
+    }
+  });
+
+  // ★ AI 게임 시작 핸들러
+  socket.on('start_ai_game', (difficulty) => {
+    roles = { 1: socket.id, 2: 'AI' };
+    readyStatus = { 1: true, 2: true };
+    isGameStarted = true;
+    gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
+    gameState.isVsAI = true;
+    gameState.aiDifficulty = difficulty; 
+
+    io.emit('lobby_update', { roles, readyStatus, isGameStarted });
+    io.emit('game_start', true);
+    io.emit('update_state', gameState);
+    startGameTimer();
+  });
+
+  // 게임 행동 처리
+  socket.on('game_action', (newState) => {
+    if (roles[1] !== socket.id && roles[2] !== socket.id) return;
+    if (gameState.winner) return;
+
+    // 잔상 & 마지막 벽 기록
+    let newLastMove = gameState.lastMove;
+    let newLastWall = null;
+    if (gameState.p1.x !== newState.p1.x || gameState.p1.y !== newState.p1.y) {
+       newLastMove = { player: 1, x: gameState.p1.x, y: gameState.p1.y };
+       newLastWall = null;
+    } else if ((newState.walls||[]).length > (gameState.walls||[]).length) {
+       const walls = newState.walls || [];
+       if (walls.length > 0) newLastWall = walls[walls.length-1];
+    }
+    
+    const prevTurn = gameState.turn;
+    gameState = { ...newState, p1Time: gameState.p1Time, p2Time: gameState.p2Time, lastMove: newLastMove, lastWall: newLastWall };
+    
+    if (prevTurn === 1) gameState.p1Time = Math.min(MAX_TIME, gameState.p1Time + INCREMENT);
+    else gameState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT);
+
+    io.emit('update_state', gameState);
+
+    // ★ 사람이 뒀으면 AI 턴 실행
+    if (gameState.isVsAI && gameState.turn === 2 && !gameState.winner) {
+        processAIMove();
+    }
+  });
+
+  socket.on('resign_game', () => {
+    let p = null;
+    if (roles[1]===socket.id) p=1; else if (roles[2]===socket.id) p=2;
+    if (p && isGameStarted && !gameState.winner) {
+      gameState.winner = p===1?2:1;
+      if (gameInterval) clearInterval(gameInterval);
+      io.emit('update_state', gameState);
+    }
+  });
+
+  socket.on('reset_game', () => {
+    if (roles[1]!==socket.id && roles[2]!==socket.id) return;
+    if (gameInterval) clearInterval(gameInterval);
+    isGameStarted = false;
+    readyStatus = { 1: false, 2: false };
+    gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
+    io.emit('game_start', false);
+    broadcastLobby();
+  });
+
+  socket.on('disconnect', () => {
+    const isP1 = roles[1]===socket.id;
+    if (isP1 || roles[2]===socket.id) {
+      if (isP1) { roles[1]=null; readyStatus[1]=false; } else { roles[2]=null; readyStatus[2]=false; }
+      if (isGameStarted) {
+        if (gameInterval) clearInterval(gameInterval);
+        isGameStarted = false;
+        io.emit('game_start', false);
+      }
+      broadcastLobby();
+    }
+  });
+});
+
+const PORT = 3001;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
