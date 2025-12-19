@@ -343,6 +343,7 @@ io.on('connection', (socket) => {
       if (isP1) { roles[1]=null; readyStatus[1]=false; }
       if (isP2) { roles[2]=null; readyStatus[2]=false; }
       
+      // AI 모드가 아닐 때, 실제 플레이어가 나가면 게임 종료
       if (isGameStarted) {
         if (gameInterval) clearInterval(gameInterval);
         isGameStarted = false;
