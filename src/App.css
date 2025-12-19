@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style */
+/* App.css - Quoridor Web Game Style (Final) */
 
 * {
   box-sizing: border-box;
@@ -51,37 +51,10 @@ body {
   font-size: 2.5rem;
 }
 
-/* 헤더 (관전 배지용) */
-.header {
-  height: 40px;
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #000;
-  gap: 10px;
-  font-size: 0.9rem;
-}
+/* 기존 헤더 삭제 */
+.header { display: none; }
 
-/* 관전 모드 배지 */
-.spectator-badge {
-  background: #e03131;
-  color: white;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.7; }
-  100% { opacity: 1; }
-}
-
-/* 메인 영역 */
+/* --- 메인 영역 --- */
 .game-wrapper {
   flex: 1;
   width: 100%;
@@ -107,7 +80,7 @@ body {
   height: 100%;
 }
 
-/* 플레이어 패널 */
+/* --- 플레이어 패널 --- */
 .side-panel {
   width: 160px;
   padding: 15px;
@@ -145,7 +118,7 @@ body {
 .btn.selected { background: #fcc419; color: black; }
 .btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* 보드판 섹션 */
+/* --- 보드 섹션 --- */
 .board-section {
   display: flex;
   flex-direction: column;
@@ -162,23 +135,55 @@ body {
 .t-white { color: #ced4da; }
 .t-black { color: #868e96; }
 
-/* --- ⏱️ 초읽기 타임 바 --- */
+/* --- ⏱️ 초읽기 타임 바 & 배지 --- */
 .time-bar-wrapper {
   width: 95%;
   max-width: 480px;
   height: 24px; 
   background-color: #343a40;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible; /* 배지가 밖으로 튀어나올 수 있게 */
   position: relative;
   box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
   margin: 8px 0;
+  margin-top: 25px; /* 배지 공간 확보 */
+}
+
+/* ★ 상태 배지 (관전/게임중) 위치: 타임 바 왼쪽 위 */
+.status-badge {
+  position: absolute;
+  top: -24px; /* 타임 바 바로 위 */
+  left: 0;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: white;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  white-space: nowrap;
+}
+
+.badge-spectator {
+  background-color: #e03131; /* 빨강 */
+  animation: pulse 2s infinite;
+}
+
+.badge-ingame {
+  background-color: #228be6; /* 파랑 */
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
 }
 
 .time-bar-fill {
   height: 100%;
   background-color: #27ae60;
   width: 100%;
+  border-radius: 12px; /* 꽉 찼을 때 둥글게 */
   transition: width 0.5s linear, background-color 0.3s;
 }
 
@@ -198,7 +203,7 @@ body {
   z-index: 2;
 }
 
-/* --- 항복 버튼 영역 --- */
+/* --- 항복 버튼 --- */
 .controls-row {
   width: 95%;
   max-width: 480px;
@@ -221,7 +226,7 @@ body {
 .btn-resign:hover { background-color: #fa5252; color: white; }
 .btn-resign:disabled { opacity: 0.3; cursor: not-allowed; border-color: #868e96; color: #868e96; }
 
-/* 보드 컨테이너 */
+/* --- 보드 컨테이너 --- */
 .board-container {
   padding: 10px;
   background: #181a1b;
@@ -267,7 +272,7 @@ body {
 .ghost-white { background: #f8f9fa; border: 2px dashed #adb5bd; }
 .ghost-black { background: #212529; border: 2px dashed #868e96; }
 
-/* 벽 스타일 */
+/* --- 벽 스타일 --- */
 .wall-target { position: absolute; z-index: 10; transition: background 0.2s; }
 .wall-target.in-wall-mode { cursor: pointer; }
 .wall-target.placeable:hover { background: rgba(252, 196, 25, 0.6); }
@@ -285,6 +290,7 @@ body {
   pointer-events: none;
 }
 
+/* ✨ 최신 벽 하이라이트 */
 .placed-wall.latest {
   background: #ffec99 !important; 
   box-shadow: 0 0 10px #fcc419, 0 2px 4px rgba(0,0,0,0.5); 
@@ -343,12 +349,13 @@ body {
   .button-group { flex-direction: row; gap: 5px; }
   .btn { padding: 5px 10px; font-size: 0.8rem; height: 34px;}
 
-  .header { display: none; }
-  /* 모바일에서 메뉴 버튼 위치 */
+  .reset-float { bottom: 10px; right: 10px; padding: 8px 12px; font-size: 0.8rem; }
+  
+  /* 모바일에서 메뉴 버튼 */
   .menu-float { bottom: 10px; left: 10px; padding: 8px 12px; font-size: 0.8rem; }
 }
 
-/* --- 로비 및 팝업 스타일 --- */
+/* --- 로비, 메뉴, 팝업 스타일 --- */
 .lobby-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; }
 
 /* 로비 카드 */
@@ -423,15 +430,11 @@ body {
 .start-btn { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 .cancel-btn { width: 100%; margin-top: 10px; padding: 10px; background: #868e96; color: white; border: none; border-radius: 8px; cursor: pointer; }
 
-.overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; display: flex; justify-content: center; align-items: center; }
-.modal { background: white; color: black; padding: 30px; border-radius: 15px; text-align: center; }
-.reset-large { margin-top: 15px; padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
-
-/* ★ [수정] 플로팅 메뉴 버튼 (좌측 하단) */
+/* 메뉴 플로팅 버튼 */
 .menu-float { 
   position: fixed; 
   bottom: 20px; 
-  left: 20px; /* 기존 right에서 left로 변경 */
+  left: 20px; 
   padding: 10px 20px; 
   background-color: #343a40; 
   color: white; 
@@ -444,8 +447,13 @@ body {
 }
 .menu-float:hover { background-color: #495057; }
 
-/* 메뉴 모달 내 버튼 스타일 */
+/* 메뉴 모달 내 버튼 */
 .menu-title { margin-bottom: 20px; font-size: 1.5rem; font-weight: bold; color: #333; }
 .menu-btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 1rem; }
 .btn-exit { background-color: #e03131; color: white; }
 .btn-close { background-color: #868e96; color: white; margin-top: 10px; }
+
+/* 결과창 모달 */
+.overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; display: flex; justify-content: center; align-items: center; }
+.modal { background: white; color: black; padding: 30px; border-radius: 15px; text-align: center; }
+.reset-large { margin-top: 15px; padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }

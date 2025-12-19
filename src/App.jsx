@@ -2,10 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import './App.css';
 
-// 소켓 서버 연결
 const socket = io('https://my-quoridor.onrender.com');
 
-// 사운드 객체 로드
 const sounds = {
   move: new Audio('/sounds/move.mp3'),
   wall: new Audio('/sounds/wall.mp3'),
@@ -14,7 +12,6 @@ const sounds = {
   lose: new Audio('/sounds/lose.mp3'),
 };
 
-// 사운드 재생 헬퍼 함수
 const playSound = (name) => {
   try {
     const audio = sounds[name];
@@ -27,8 +24,7 @@ const playSound = (name) => {
   }
 };
 
-// 타임 바 컴포넌트
-const TimeBar = ({ time, maxTime = 90 }) => {
+const TimeBar = ({ time, maxTime = 90, badge }) => {
   const percentage = Math.min(100, Math.max(0, (time / maxTime) * 100));
   let statusClass = '';
   if (time < 10) statusClass = 'danger';
@@ -36,6 +32,8 @@ const TimeBar = ({ time, maxTime = 90 }) => {
 
   return (
     <div className="time-bar-wrapper">
+      {/* ★ 여기에 배지 표시 (존재할 경우) */}
+      {badge}
       <div className={`time-bar-fill ${statusClass}`} style={{ width: `${percentage}%` }}/>
       <div className="time-text">{time}s</div>
     </div>
@@ -43,7 +41,6 @@ const TimeBar = ({ time, maxTime = 90 }) => {
 };
 
 function App() {
-  // [게임 상태 초기값]
   const initialState = {
     p1: { x: 4, y: 0, wallCount: 10 },
     p2: { x: 4, y: 8, wallCount: 10 },
@@ -53,23 +50,23 @@ function App() {
     p1Time: 60,
     p2Time: 60,
     lastMove: null, 
-    lastWall: null
+    lastWall: null,
+    winReason: null // 서버에서 받는 승리 사유
   };
 
-  // [상태 변수 선언]
   const [player1, setPlayer1] = useState(initialState.p1);
   const [player2, setPlayer2] = useState(initialState.p2);
   const [turn, setTurn] = useState(initialState.turn);
   const [walls, setWalls] = useState(initialState.walls);
   const [winner, setWinner] = useState(initialState.winner);
+  const [winReason, setWinReason] = useState(initialState.winReason);
+  
   const [p1Time, setP1Time] = useState(initialState.p1Time);
   const [p2Time, setP2Time] = useState(initialState.p2Time);
   
-  // 시각 효과용 상태
   const [lastMove, setLastMove] = useState(null);
   const [lastWall, setLastWall] = useState(null);
   
-  // 플레이어 상호작용 상태
   const [actionMode, setActionMode] = useState(null);
   const [myRole, setMyRole] = useState(null);
   const [takenRoles, setTakenRoles] = useState({ 1: null, 2: null });
@@ -77,18 +74,13 @@ function App() {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [previewWall, setPreviewWall] = useState(null); 
 
-  // UI 상태
   const [showDifficultySelect, setShowDifficultySelect] = useState(false);
-  const [showMenu, setShowMenu] = useState(false); // ★ 메뉴 모달 토글
+  const [showMenu, setShowMenu] = useState(false); 
 
-  // 이전 상태 참조 (변화 감지용)
   const prevStateRef = useRef(initialState);
 
   useEffect(() => {
-    // 소켓 이벤트 리스너 등록
     socket.emit('request_lobby');
-    
-    // 로비 정보 업데이트
     socket.on('lobby_update', (data) => {
       setTakenRoles(data.roles);
       setReadyStatus(data.readyStatus);
@@ -98,7 +90,6 @@ function App() {
       else setMyRole(null);
     });
 
-    // 게임 시작
     socket.on('game_start', (started) => {
       setIsGameStarted(started);
       if (started) {
@@ -106,14 +97,13 @@ function App() {
         prevStateRef.current = JSON.parse(JSON.stringify(initialState));
         setLastMove(null);
         setLastWall(null);
-        setShowDifficultySelect(false); // 난이도창 닫기
-        setShowMenu(false); // 메뉴창 닫기
+        setShowDifficultySelect(false);
+        setShowMenu(false);
       } else {
-        setShowMenu(false); // 게임 종료 시에도 메뉴 닫기
+        setShowMenu(false); 
       }
     });
 
-    // 상태 동기화
     socket.on('update_state', (state) => syncWithServer(state));
     socket.on('init_state', (state) => syncWithServer(state));
 
@@ -125,12 +115,10 @@ function App() {
     };
   }, [myRole]);
 
-  // [서버 상태 동기화 및 효과 처리]
   const syncWithServer = (state) => {
     if (!state) return;
     const prev = prevStateRef.current;
     
-    // 사운드 트리거
     if (prev.p1.x !== state.p1.x || prev.p1.y !== state.p1.y || 
         prev.p2.x !== state.p2.x || prev.p2.y !== state.p2.y) playSound('move');
 
@@ -143,46 +131,35 @@ function App() {
       } else playSound('win');
     }
 
-    // 턴 변경 시 UI 초기화
     if (prev.turn !== state.turn) {
       setPreviewWall(null);
       setActionMode(null);
     }
 
-    // 데이터 갱신
     prevStateRef.current = state;
     setPlayer1(state.p1);
     setPlayer2(state.p2);
     setTurn(state.turn);
     setWalls(state.walls || []);
     setWinner(state.winner);
+    setWinReason(state.winReason); // 승리 사유 동기화
     setP1Time(state.p1Time);
     setP2Time(state.p2Time);
     setLastMove(state.lastMove);
     setLastWall(state.lastWall);
   };
 
-  // [액션 전송 함수들]
   const emitAction = (newState) => socket.emit('game_action', newState);
   const selectRole = (role) => socket.emit('select_role', role);
   const toggleReady = () => myRole && socket.emit('player_ready', myRole);
   
-  // ★ 나가기(리셋) 기능
-  const resetGame = () => {
-    if (window.confirm("정말 게임을 종료하고 로비로 돌아가시겠습니까?")) {
-        socket.emit('reset_game');
-    }
-  };
-  
+  const resetGame = () => { socket.emit('reset_game'); };
   const resignGame = () => { if(window.confirm("정말 기권하시겠습니까?")) socket.emit('resign_game'); };
-
-  const startAiGame = (difficulty) => {
-    socket.emit('start_ai_game', difficulty);
-  };
+  const startAiGame = (difficulty) => { socket.emit('start_ai_game', difficulty); };
 
   const isMyTurn = turn === myRole;
 
-  // [게임 규칙 검증 로직]
+  // ... (게임 로직 함수들은 그대로 유지) ...
   const isBlockedByWall = (currentX, currentY, targetX, targetY, currentWalls) => {
     if (targetY < currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === targetY && (w.x === currentX || w.x === currentX - 1));
     if (targetY > currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === currentY && (w.x === currentX || w.x === currentX - 1));
@@ -201,7 +178,6 @@ function App() {
     if (!isGameStarted || !isMyTurn || actionMode !== 'move' || winner) return false;
     const current = turn === 1 ? player1 : player2;
     const opponent = turn === 1 ? player2 : player1;
-    
     if (isValidStep(current.x, current.y, targetX, targetY, walls)) {
       if (!(targetX === opponent.x && targetY === opponent.y)) return true;
     }
@@ -218,7 +194,6 @@ function App() {
     }
     return false;
   };
-
   const canPlaceWall = (x, y, orientation) => {
     if (!isGameStarted || !isMyTurn || winner) return false;
     const isOverlap = walls.some(w => {
@@ -231,49 +206,29 @@ function App() {
       return false;
     });
     if (isOverlap) return false;
-    return true; // 클라이언트는 기본 체크만 (서버가 검증)
+    return true; 
   };
-
-  // [입력 핸들러]
   const handleCellClick = (x, y) => {
     setPreviewWall(null); 
     if (!isMyTurn) return;
     if (!isMoveable(x, y)) return;
-    
     let nextState = { p1: player1, p2: player2, turn: turn === 1 ? 2 : 1, walls, winner: null };
-    if (turn === 1) {
-      nextState.p1 = { ...player1, x, y };
-      if (nextState.p1.y === 8) nextState.winner = 1;
-    } else {
-      nextState.p2 = { ...player2, x, y };
-      if (nextState.p2.y === 0) nextState.winner = 2;
-    }
+    if (turn === 1) { nextState.p1 = { ...player1, x, y }; if (nextState.p1.y === 8) { nextState.winner = 1; nextState.winReason='goal'; } } 
+    else { nextState.p2 = { ...player2, x, y }; if (nextState.p2.y === 0) { nextState.winner = 2; nextState.winReason='goal'; } }
     emitAction(nextState);
   };
-
   const handleWallClick = (x, y, orientation) => {
     if (!isMyTurn || actionMode !== 'wall') return;
     const current = turn === 1 ? player1 : player2;
     if (current.wallCount <= 0) return;
     if (!canPlaceWall(x, y, orientation)) { setPreviewWall(null); return; }
-
     if (previewWall && previewWall.x === x && previewWall.y === y && previewWall.orientation === orientation) {
       const nextWalls = [...walls, { x, y, orientation }];
-      let nextState = { 
-        p1: turn === 1 ? { ...player1, wallCount: player1.wallCount - 1 } : player1,
-        p2: turn === 2 ? { ...player2, wallCount: player2.wallCount - 1 } : player2,
-        turn: turn === 1 ? 2 : 1,
-        walls: nextWalls,
-        winner: null
-      };
-      emitAction(nextState);
-      setPreviewWall(null);
-    } else {
-      setPreviewWall({ x, y, orientation });
-    }
+      let nextState = { p1: turn===1?{...player1,wallCount:player1.wallCount-1}:player1, p2: turn===2?{...player2,wallCount:player2.wallCount-1}:player2, turn: turn===1?2:1, walls: nextWalls, winner: null };
+      emitAction(nextState); setPreviewWall(null);
+    } else { setPreviewWall({ x, y, orientation }); }
   };
-
-  // [스타일 생성기]
+  
   const getVWallStyle = (x, y) => ({ left: `calc(${x} * var(--unit) + var(--cell))`, top: `calc(${y} * var(--unit))` });
   const getHWallStyle = (x, y) => ({ left: `calc(${x} * var(--unit))`, top: `calc(${y} * var(--unit) + var(--cell))` });
   const getPlacedWallStyle = (wall) => {
@@ -281,28 +236,49 @@ function App() {
     else return { left: `calc(${wall.x} * var(--unit))`, top: `calc(${wall.y} * var(--unit) + var(--cell))` };
   };
 
-  // 뷰 회전 설정
+  // --- 화면 렌더링 준비 ---
   const isSpectator = isGameStarted && myRole !== 1 && myRole !== 2;
   const isFlipped = myRole === 1; 
   const topTime = isFlipped ? p2Time : p1Time;
   const bottomTime = isFlipped ? p1Time : p2Time;
 
-  let resultMessage = "";
+  // ★ 배지(Badge) 결정
+  let topBadge = null;
+  if (isGameStarted) {
+    if (isSpectator) {
+      topBadge = <div className="status-badge badge-spectator">관전 모드 (Spectator)</div>;
+    } else {
+      // 내가 플레이어라면 상대편 바 위에 "게임 중" 표시 (또는 내 상태 표시? 사용자 요청은 '게임중' 표시)
+      // "관전모드 위치" = 상단 바 왼쪽 위. 여기에 "게임 중"을 띄움.
+      topBadge = <div className="status-badge badge-ingame">게임 진행 중 (Playing)</div>;
+    }
+  }
+
+  // ★ 결과 메시지 생성 (시간 초과 반영)
+  let resultTitle = "";
+  let resultDesc = "";
+  
   if (winner) {
-    if (isSpectator) resultMessage = winner === 1 ? "백색 승리!" : "흑색 승리!";
-    else resultMessage = winner === myRole ? "승리!" : "패배...";
+    const isWin = winner === myRole;
+    
+    // 제목 결정
+    if (isSpectator) resultTitle = winner === 1 ? "백색 승리!" : "흑색 승리!";
+    else resultTitle = isWin ? "승리!" : "패배...";
+
+    // 부연 설명 (시간초과/기권 등)
+    if (winReason === 'timeout') resultDesc = "(시간 초과)";
+    else if (winReason === 'resign') resultDesc = "(기권)";
+    else if (winReason === 'goal') resultDesc = ""; // 골인은 기본이므로 생략
   }
 
   return (
     <div className="container">
       <div className="game-title">QUORIDOR</div>
 
-      {/* --- [로비 및 팝업] --- */}
       {!isGameStarted && (
         <div className="lobby-overlay">
           <div className="lobby-card">
             <h2 style={{marginBottom: '20px'}}>QUORIDOR ONLINE</h2>
-            
             {showDifficultySelect ? (
                <div className="difficulty-overlay">
                   <h3 style={{marginBottom:'10px'}}>난이도 선택</h3>
@@ -347,11 +323,8 @@ function App() {
         </div>
       )}
 
-      {/* --- [메인 게임 화면] --- */}
       <div className={`game-wrapper ${!isGameStarted ? 'blurred' : ''}`}>
-        <header className="header">
-          {isSpectator && <div className="spectator-badge">관전 모드</div>}
-        </header>
+        {/* 기존 헤더 삭제됨 */}
         <main className="main-content">
           <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 3 : 1 }}>
             <div className="wall-counter white-box">남은 벽: <span className="count">{player1.wallCount}</span></div>
@@ -364,9 +337,12 @@ function App() {
           </aside>
           <section className="board-section" style={{ order: 2 }}>
             <div className="turn-display">
-              {winner ? <span className="win-text">{resultMessage}</span> : <span className={turn===1?'t-white':'t-black'}>{turn===1?'● 백색 턴':'● 흑색 턴'}</span>}
+              {winner ? <span className="win-text">{resultTitle}</span> : <span className={turn===1?'t-white':'t-black'}>{turn===1?'● 백색 턴':'● 흑색 턴'}</span>}
             </div>
-            <TimeBar time={topTime} />
+
+            {/* ★ 상단 타임 바에 배지 전달 */}
+            <TimeBar time={topTime} badge={topBadge} />
+            
             <div className="board-container">
               <div className="board" style={{ transform: isFlipped ? 'rotate(180deg)' : 'none' }}>
                 {Array.from({length:81}).map((_,i)=>{
@@ -404,7 +380,10 @@ function App() {
                 })}
               </div>
             </div>
+            
+            {/* 하단 타임 바 (배지 없음) */}
             <TimeBar time={bottomTime} />
+
             {!isSpectator && !winner && isGameStarted && (
                <div className="controls-row">
                  <button className="btn-resign" onClick={resignGame}>항복 (Resign)</button>
@@ -422,12 +401,10 @@ function App() {
           </aside>
         </main>
         
-        {/* ★ [수정] 메뉴 플로팅 버튼 */}
         {isGameStarted && !isSpectator && (
           <button className="menu-float" onClick={() => setShowMenu(true)}>MENU</button>
         )}
         
-        {/* ★ [추가] 메뉴 모달 */}
         {showMenu && (
           <div className="lobby-overlay" onClick={() => setShowMenu(false)}>
              <div className="lobby-card" onClick={(e) => e.stopPropagation()}>
@@ -438,7 +415,16 @@ function App() {
           </div>
         )}
 
-        {winner && (<div className="overlay"><div className="modal"><h2>{resultMessage}</h2><button className="reset-large" onClick={resetGame}>로비로</button></div></div>)}
+        {/* 결과 모달 */}
+        {winner && (
+          <div className="overlay">
+            <div className="modal">
+              <h2>{resultTitle}</h2>
+              {resultDesc && <p style={{marginTop:'5px', color:'#666'}}>{resultDesc}</p>}
+              <button className="reset-large" onClick={resetGame}>로비로</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
