@@ -1,6 +1,6 @@
-/* App.css - demo_version_1 (Fixed: Override index.css & Full Center) */
+/* App.css - Final Perfect (No Top Margin + Center Fixed) */
 
-/* ★ 핵심 수정: index.css의 방해를 무시하고 화면을 꽉 채움 */
+/* 1. 왼쪽 쏠림 해결의 열쇠: index.css 무시하고 꽉 채우기 */
 #root {
   width: 100%;
   height: 100%;
@@ -42,7 +42,7 @@ body {
   background-color: #212529;
   color: #f8f9fa;
   
-  /* ★ 수정: index.css의 flex 설정을 강제로 끄고 block으로 변경 */
+  /* 2. index.css의 flex 설정을 강제로 끄고 block으로 변경 */
   display: block !important; 
   place-items: unset !important;
   
@@ -58,11 +58,14 @@ body {
   flex-direction: column;
   overflow: hidden;
   
-  /* 가로/세로 완전 중앙 정렬 */
+  /* 3. 완전 중앙 정렬 */
   justify-content: center;
   align-items: center; 
   
   position: relative;
+  
+  /* 4. 상단 여백 제거 (드래그 문제 해결!) */
+  padding-top: 0 !important; 
 }
 
 /* --- PC 전용 스타일 --- */
@@ -155,7 +158,7 @@ body {
 .white-pawn { background: #f8f9fa; } .black-pawn { background: #212529; border: 2px solid #868e96; }
 .move-dot { width: 25%; height: 25%; background: rgba(0,0,0,0.3); border-radius: 50%; }
 
-/* 흑색 잔상 (잘 보이도록 테두리 수정됨) */
+/* 흑색 잔상 (잘 보이게) */
 .ghost-pawn { width: var(--pawn); height: var(--pawn); border-radius: 50%; position: absolute; z-index: 4; opacity: 0.4; pointer-events: none; transform: scale(0.8); box-shadow: none; }
 .ghost-white { background: #f8f9fa; border: 2px dashed #adb5bd; } 
 .ghost-black { background: #212529; border: 2px dashed rgba(255, 255, 255, 0.7); }
@@ -176,7 +179,7 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   [demo_version_1]: 가장 안정적인 초기 스타일
+   [demo_version_1]: 안정적 배치 + 상단 여백 제거(0px)
    ================================================= */
 @media (max-width: 768px) {
   :root {
@@ -189,8 +192,9 @@ body {
   /* 1. 컨테이너: 중앙 정렬 */
   .container {
     justify-content: center; 
-    align-items: center; /* 가로 중앙 정렬 */
-    padding-top: 0;
+    align-items: center;
+    /* 상단 여백 완전히 제거 */
+    padding-top: 0 !important;
   }
 
   /* 2. 타이틀 */
@@ -215,7 +219,7 @@ body {
     flex: 1;
     display: flex; flex-direction: column;
     justify-content: center; 
-    align-items: center; /* 내부 요소도 중앙 정렬 */
+    align-items: center;
     gap: 10px;
     padding: 10px 0;
     width: 100%;
@@ -257,7 +261,7 @@ body {
   .btn { padding: 0 12px; font-size: 0.8rem; height: 32px; min-width: 55px; display: flex; align-items: center; justify-content: center; }
 }
 
-/* 로비 & 모달 (변경 없음) */
+/* 로비 & 모달 스타일 유지 */
 .lobby-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; }
 .lobby-card { background: white; color: #333; padding: 30px; border-radius: 15px; width: 85%; max-width: 380px; text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
 .difficulty-overlay { width: 100%; height: auto; background: white; padding: 10px 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
