@@ -1,6 +1,6 @@
-/* App.css - Final Perfect (No Top Margin + Center Fixed) */
+/* App.css - Final Balanced Version (Big Board, No Gap, No Scroll) */
 
-/* 1. 왼쪽 쏠림 해결의 열쇠: index.css 무시하고 꽉 채우기 */
+/* 1. index.css 무시하고 화면 꽉 채우기 (왼쪽 쏠림 방지) */
 #root {
   width: 100%;
   height: 100%;
@@ -42,7 +42,7 @@ body {
   background-color: #212529;
   color: #f8f9fa;
   
-  /* 2. index.css의 flex 설정을 강제로 끄고 block으로 변경 */
+  /* flex 해제 (왼쪽 쏠림 원인 제거) */
   display: block !important; 
   place-items: unset !important;
   
@@ -58,13 +58,13 @@ body {
   flex-direction: column;
   overflow: hidden;
   
-  /* 3. 완전 중앙 정렬 */
+  /* 중앙 정렬 */
   justify-content: center;
   align-items: center; 
   
   position: relative;
   
-  /* 4. 상단 여백 제거 (드래그 문제 해결!) */
+  /* 상단 여백 제거 */
   padding-top: 0 !important; 
 }
 
@@ -132,7 +132,7 @@ body {
 .board-section { display: flex; flex-direction: column; align-items: center; justify-content: center; width: auto; height: 100%; }
 .t-white { color: #ced4da; } .t-black { color: #868e96; }
 
-/* 타임 바 & 상단 정보 (PC) */
+/* 타임 바 (PC) */
 .time-bar-container { width: 95%; max-width: 480px; margin: 8px 0; margin-top: 20px; }
 .time-info-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 5px; width: 100%; }
 .info-left { justify-self: start; } .info-center { justify-self: center; } .info-right { justify-self: end; }
@@ -158,7 +158,7 @@ body {
 .white-pawn { background: #f8f9fa; } .black-pawn { background: #212529; border: 2px solid #868e96; }
 .move-dot { width: 25%; height: 25%; background: rgba(0,0,0,0.3); border-radius: 50%; }
 
-/* 흑색 잔상 (잘 보이게) */
+/* 흑색 잔상 */
 .ghost-pawn { width: var(--pawn); height: var(--pawn); border-radius: 50%; position: absolute; z-index: 4; opacity: 0.4; pointer-events: none; transform: scale(0.8); box-shadow: none; }
 .ghost-white { background: #f8f9fa; border: 2px dashed #adb5bd; } 
 .ghost-black { background: #212529; border: 2px dashed rgba(255, 255, 255, 0.7); }
@@ -173,27 +173,28 @@ body {
 .placed-wall.latest { background: #ffec99 !important; box-shadow: 0 0 10px #fcc419, 0 2px 4px rgba(0,0,0,0.5); animation: wallPulse 2s infinite; z-index: 25; }
 @keyframes wallPulse { 0% { box-shadow: 0 0 5px #fcc419; } 50% { box-shadow: 0 0 15px #fcc419; } 100% { box-shadow: 0 0 5px #fcc419; } }
 
-/* 메뉴 플로팅 버튼 (PC용) */
+/* 메뉴 플로팅 버튼 */
 .menu-float { position: fixed; bottom: 20px; left: 20px; padding: 10px 20px; background-color: #343a40; color: white; border: 1px solid #495057; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 500; }
 .menu-float:hover { background-color: #495057; }
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   [demo_version_1]: 안정적 배치 + 상단 여백 제거(0px)
+   ★ 보드 확대 (7.4vmin) & 빈 공간 채우기
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    --cell: 6.0vmin; 
+    /* ★ 수정: 6.0 -> 7.4vmin (약 23% 확대) */
+    /* 이렇게 하면 위아래 빈 공간을 보드가 자연스럽게 채웁니다 */
+    --cell: 7.4vmin; 
     --gap: 1vmin;
-    --pawn: 4.2vmin;
-    --wall-thick: 1.0vmin;
+    --pawn: 5.0vmin; /* 비율 맞춰 확대 */
+    --wall-thick: 1.2vmin; /* 비율 맞춰 확대 */
   }
 
   /* 1. 컨테이너: 중앙 정렬 */
   .container {
     justify-content: center; 
-    align-items: center;
-    /* 상단 여백 완전히 제거 */
+    align-items: center; 
     padding-top: 0 !important;
   }
 
@@ -214,14 +215,17 @@ body {
     padding: 6px 12px; font-size: 0.8rem; z-index: 200;
   }
 
-  /* 4. 메인 콘텐츠: 스택형 배치 */
+  /* 4. 메인 콘텐츠: 스택형 배치 + 간격 축소 */
   .main-content {
     flex: 1;
     display: flex; flex-direction: column;
     justify-content: center; 
     align-items: center;
-    gap: 10px;
-    padding: 10px 0;
+    
+    /* ★ 간격을 줄여서(10px -> 4px) 보드가 커져도 밀리지 않게 함 */
+    gap: 4px; 
+    
+    padding: 5px 0;
     width: 100%;
     height: auto;
   }
@@ -248,8 +252,8 @@ body {
   /* 타임바 */
   .time-bar-container { 
     width: 90%; max-width: 320px; 
-    margin-top: 5px; 
-    margin-bottom: 5px;
+    margin-top: 2px; /* 간격 미세 조정 */
+    margin-bottom: 2px;
     flex-shrink: 0; 
   }
   .status-badge { font-size: 0.65rem; padding: 2px 6px; }
@@ -261,7 +265,7 @@ body {
   .btn { padding: 0 12px; font-size: 0.8rem; height: 32px; min-width: 55px; display: flex; align-items: center; justify-content: center; }
 }
 
-/* 로비 & 모달 스타일 유지 */
+/* 로비 & 모달 (기존 유지) */
 .lobby-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; }
 .lobby-card { background: white; color: #333; padding: 30px; border-radius: 15px; width: 85%; max-width: 380px; text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
 .difficulty-overlay { width: 100%; height: auto; background: white; padding: 10px 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
