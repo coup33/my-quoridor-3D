@@ -1,4 +1,4 @@
-/* App.css - The "Original Perfect" Version */
+/* App.css - Standard Stable Layout (Clean Reset) */
 
 * {
   box-sizing: border-box;
@@ -36,22 +36,16 @@ body {
   background-color: #212529;
   color: #f8f9fa;
   overflow: hidden;
-  /* 억지 고정(fixed) 제거하고 원래대로 */
-  width: 100vw;
-  height: 100vh;
 }
 
 .container {
-  width: 100%;
-  height: 100%; 
+  width: 100vw;
+  height: 100vh; 
+  height: 100dvh; 
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  
-  /* ★ 데스크탑 왼쪽 쏠림 방지용 안전장치 */
   justify-content: center;
-  align-items: center; 
-  
   position: relative;
 }
 
@@ -162,25 +156,28 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 가장 안정적인 초기 스타일 (Standard Layout)
-   ★ 절대위치 제거, 자연스러운 스택 배치
+   ★ 로비 정상화 및 순차적 배치 (Standard Layout) ★
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    /* 초기 완벽했던 비율: 6.0vmin */
-    --cell: 6.0vmin; 
+    /* ★ 수정: 보드 크기 대폭 확대 (5.5 -> 8.8) */
+    /* 가로폭(행동버튼)에 얼추 맞게 꽉 채움 */
+    --cell: 8.8vmin; 
+    
     --gap: 1vmin;
-    --pawn: 4.2vmin;
-    --wall-thick: 1.0vmin;
+    
+    /* 셀이 커진 만큼 말과 벽도 비율에 맞춰 키움 */
+    --pawn: 6.0vmin; 
+    --wall-thick: 1.5vmin; 
   }
 
-  /* 1. 컨테이너: 중앙 정렬 */
+  /* 1. 컨테이너: 중앙 정렬 (로비 복구) */
   .container {
     justify-content: center; 
     padding-top: 0;
   }
 
-  /* 2. 타이틀 */
+  /* 2. 타이틀: 흐름 내 배치 */
   .game-title {
     position: relative;
     top: auto; left: auto; transform: none; writing-mode: horizontal-tb;
@@ -201,15 +198,14 @@ body {
   .main-content {
     flex: 1;
     display: flex; flex-direction: column;
-    justify-content: center; 
+    justify-content: center; /* 내용물 중앙 정렬 */
     align-items: center;
-    gap: 10px; 
+    gap: 10px; /* 요소 간 간격 */
     padding: 10px 0;
-    width: 100%;
     height: auto;
   }
 
-  /* 5. 패널 공통 (상대/나 모두) - 90% 너비 박스형 */
+  /* 5. 패널 공통 */
   .side-panel {
     width: 90%; max-width: 320px; height: 40px;
     padding: 0 10px;
@@ -217,8 +213,6 @@ body {
     margin: 0 auto;
     flex-shrink: 0;
     white-space: nowrap;
-    position: relative; 
-    bottom: auto; left: auto; transform: none; 
   }
 
   /* 6. 보드 섹션 */
@@ -228,7 +222,7 @@ body {
     justify-content: center; align-items: center;
   }
 
-  /* 타임바 */
+  /* 타임바 & 턴 정보 */
   .time-bar-container { 
     width: 90%; max-width: 320px; 
     margin-top: 5px; 
