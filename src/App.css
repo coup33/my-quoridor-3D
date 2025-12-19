@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Final Position Lifted) */
+/* App.css - Quoridor Web Game Style (Final Grouped Layout) */
 
 * {
   box-sizing: border-box;
@@ -184,7 +184,7 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 전략: 상단/하단 고정(Anchored) + 중앙 요소 위로 이동(Lifted)
+   ★ 전략: [상대패널+보드] 중앙 그룹핑 & 상하단 고정
    ================================================= */
 @media (max-width: 768px) {
   :root {
@@ -200,10 +200,10 @@ body {
     padding-top: 0;
   }
 
-  /* 2. [상단 고정] 타이틀 - 마진 줄임 */
+  /* 2. [상단 고정] 타이틀 */
   .game-title {
     position: absolute; 
-    top: 2px; /* 상단 딱 붙임 */
+    top: 2px; 
     left: 50%;
     transform: translateX(-50%);
     width: auto;
@@ -226,10 +226,9 @@ body {
     z-index: 200;
   }
 
-  /* 4. [하단 고정] 행동 버튼 (내 패널) - 위로 올림 */
+  /* 4. [하단 고정] 내 행동 버튼 (아래에서 60px 띄움) */
   .side-panel.pos-bottom {
     position: absolute;
-    /* ★ 수정: 바닥에서 60px 띄워서 확실히 분리 */
     bottom: 60px;
     left: 50%;
     transform: translateX(-50%);
@@ -250,25 +249,24 @@ body {
     box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
   }
 
-  /* 5. [중앙 영역] 메인 콘텐츠 - 전체 덩어리 위로 이동 */
+  /* 5. [중앙 영역] 메인 콘텐츠: 중앙 밀집! */
   .main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
     
-    /* ★ 핵심 수정: 상단 타이틀 공간(50px) 확보, 
-       하단 패딩을 크게(160px) 주어 내용물을 위로 밀어 올림 */
+    /* 상단 타이틀, 하단 패널 공간 확보 */
     padding-top: 50px; 
     padding-bottom: 160px; 
     
-    /* 요소들을 중앙에 모으되, 간격을 좁게 */
+    /* ★ 핵심 수정: 요소들을 '중앙'에 모으고, 간격을 좁게(gap) 설정 */
     justify-content: center; 
     align-items: center;
-    gap: 5px; /* 오밀조밀하게 */
+    gap: 8px; /* 상대 패널과 보드 사이 간격을 좁힘 */
     height: 100%;
   }
 
-  /* 6. [상단 패널] 상대방 정보 */
+  /* 6. [상단 패널] 상대방 정보 (보드 바로 위에 위치) */
   .side-panel.pos-top {
     width: 75%;
     max-width: 280px;
@@ -281,9 +279,12 @@ body {
     margin: 0 auto;
     flex-shrink: 0;
     white-space: nowrap;
+    
+    /* ★ 제목 쪽으로 올라가지 않도록 마진 제거 */
+    margin-bottom: 0;
   }
 
-  /* 7. 보드 섹션 */
+  /* 7. 보드 섹션 (타임바 포함) */
   .board-section {
     flex-shrink: 0;
     margin: 0;
@@ -301,7 +302,13 @@ body {
 
   /* 타임바 */
   .turn-display { margin-bottom: 2px; font-size: 0.9rem; flex-shrink: 0; }
-  .time-bar-container { width: 85%; max-width: 300px; margin-top: 5px; flex-shrink: 0; }
+  
+  /* ★ 타임바 상단 마진을 줄여서 상대 패널과 더 가깝게 */
+  .time-bar-container { 
+    width: 85%; max-width: 300px; 
+    margin-top: 5px; /* 좁은 간격 */
+    flex-shrink: 0; 
+  }
   .status-badge { font-size: 0.65rem; padding: 2px 6px; }
 }
 
