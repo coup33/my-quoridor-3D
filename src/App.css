@@ -1,4 +1,4 @@
-/* App.css - [demo_version_1] Final: Dynamic Gap (6vh) */
+/* App.css - [demo_version_1] Menu Fixed Relative to Title */
 
 /* 1. index.css 무시하고 화면 꽉 채우기 */
 #root {
@@ -42,7 +42,6 @@ body {
   background-color: #212529;
   color: #f8f9fa;
   
-  /* flex 해제 */
   display: block !important; 
   place-items: unset !important;
   
@@ -57,13 +56,9 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  
-  /* 중앙 정렬 */
   justify-content: center;
   align-items: center; 
-  
   position: relative;
-  
   padding-top: 0 !important; 
 }
 
@@ -172,13 +167,13 @@ body {
 .placed-wall.latest { background: #ffec99 !important; box-shadow: 0 0 10px #fcc419, 0 2px 4px rgba(0,0,0,0.5); animation: wallPulse 2s infinite; z-index: 25; }
 @keyframes wallPulse { 0% { box-shadow: 0 0 5px #fcc419; } 50% { box-shadow: 0 0 15px #fcc419; } 100% { box-shadow: 0 0 5px #fcc419; } }
 
-/* 메뉴 플로팅 버튼 */
+/* 메뉴 플로팅 버튼 (PC용) */
 .menu-float { position: fixed; bottom: 20px; left: 20px; padding: 10px 20px; background-color: #343a40; color: white; border: 1px solid #495057; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 500; }
 .menu-float:hover { background-color: #495057; }
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 최종: 타이틀 여백 6vh (화면 비례) 적용
+   ★ 메뉴 버튼 위치 수정 (top: 25px)
    ================================================= */
 @media (max-width: 768px) {
   :root {
@@ -188,31 +183,30 @@ body {
     --wall-thick: 1.3vmin; 
   }
 
-  /* 1. 컨테이너 */
+  /* 1. 컨테이너: 중앙 정렬 */
   .container {
     justify-content: center; 
     align-items: center; 
     padding-top: 0 !important;
   }
 
-  /* 2. 타이틀: 화면 높이의 약 6%만큼 띄움 */
+  /* 2. 타이틀: 6vh 간격 유지 */
   .game-title {
     position: relative;
     top: auto; left: auto; transform: none; writing-mode: horizontal-tb;
     width: 100%; text-align: center;
-    
-    /* ★ 핵심 수정: 화면 높이의 6% (약 1/16) 만큼 여백 */
     margin-top: 5px;
     margin-bottom: 6vh; 
-    
     font-size: 1.5rem; letter-spacing: 2px;
     z-index: 50;
   }
 
-  /* 3. 메뉴 버튼 */
+  /* ★ [핵심] 메뉴 버튼: 타이틀(5px)보다 반 줄 아래(25px)에 위치 */
   .menu-float { 
     position: absolute;
-    top: 10px; right: 15px; bottom: auto; left: auto;
+    top: 25px; /* 타이틀 바로 옆, 약간 아래쪽 */
+    right: 20px; 
+    bottom: auto; left: auto;
     padding: 6px 12px; font-size: 0.8rem; z-index: 200;
   }
 

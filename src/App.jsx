@@ -24,7 +24,6 @@ const playSound = (name) => {
   }
 };
 
-// TimeBar 컴포넌트
 const TimeBar = ({ time, maxTime = 90, left, center, right }) => {
   const percentage = Math.min(100, Math.max(0, (time / maxTime) * 100));
   let statusClass = '';
@@ -50,7 +49,7 @@ const TimeBar = ({ time, maxTime = 90, left, center, right }) => {
   );
 };
 
-// --- 클라이언트 사이드 길 찾기 (BFS) 로직 ---
+// BFS 로직 (유지)
 const isBlocked = (cx, cy, tx, ty, walls) => {
   if (ty < cy) return walls.some(w => w.orientation === 'h' && w.y === ty && (w.x === cx || w.x === cx - 1));
   if (ty > cy) return walls.some(w => w.orientation === 'h' && w.y === cy && (w.x === cx || w.x === cx - 1));
@@ -82,7 +81,6 @@ const hasPath = (startNode, targetRow, currentWalls) => {
   }
   return false;
 };
-// ----------------------------------------------------
 
 function App() {
   const initialState = {
@@ -141,7 +139,6 @@ function App() {
       setIsGameStarted(started);
       if (started) {
         playSound('start');
-        // ★ [수정] 전체화면 전환 코드 제거
         prevStateRef.current = JSON.parse(JSON.stringify(initialState));
         setLastMove(null);
         setLastWall(null);
@@ -201,26 +198,14 @@ function App() {
 
   const emitAction = (newState) => socket.emit('game_action', newState);
   const selectRole = (role) => socket.emit('select_role', role);
-  
-  // ★ [수정] 전체화면 호출 제거
-  const toggleReady = () => {
-    if (myRole) socket.emit('player_ready', myRole);
-  };
-  
-  const resetGame = () => { 
-    setMyRole(null); 
-    socket.emit('reset_game'); 
-  };
-  
+  const toggleReady = () => myRole && socket.emit('player_ready', myRole);
+  const resetGame = () => { setMyRole(null); socket.emit('reset_game'); };
   const resignGame = () => { if(window.confirm("정말 기권하시겠습니까?")) socket.emit('resign_game'); };
-  
-  // ★ [수정] 전체화면 호출 제거
-  const startAiGame = (difficulty) => { 
-    socket.emit('start_ai_game', difficulty); 
-  };
+  const startAiGame = (difficulty) => { socket.emit('start_ai_game', difficulty); };
 
   const isMyTurn = turn === myRole;
 
+  // 게임 로직 (이동/벽) 함수들 유지...
   const isMoveable = (targetX, targetY) => {
     if (!isGameStarted || !isMyTurn || actionMode !== 'move' || winner) return false;
     const current = turn === 1 ? player1 : player2;
@@ -351,6 +336,22 @@ function App() {
     <div className="container">
       <div className="game-title">QUORIDOR</div>
 
+      {/* ★ [수정] 메뉴 버튼을 여기로 이동 (타이틀 형제 레벨) */}
+      {isGameStarted && !isSpectator && (
+        <button className="menu-float" onClick={() => setShowMenu(true)}>MENU</button>
+      )}
+
+      {/* ★ [수정] 메뉴 모달도 여기로 이동 */}
+      {showMenu && (
+          <div className="lobby-overlay" onClick={() => setShowMenu(false)}>
+             <div className="lobby-card" onClick={(e) => e.stopPropagation()}>
+               <div className="menu-title">GAME MENU</div>
+               <button className="menu-btn btn-exit" onClick={resetGame}>나가기 (Exit Game)</button>
+               <button className="menu-btn btn-close" onClick={() => setShowMenu(false)}>닫기 (Close)</button>
+             </div>
+          </div>
+      )}
+
       {!isGameStarted && (
         <div className="lobby-overlay">
           <div className="lobby-card">
@@ -413,7 +414,6 @@ function App() {
           
           <section className="board-section" style={{ order: 2 }}>
             <TimeBar time={topTime} left={topBadge} center={turnIndicator} right={resignButton} />
-            
             <div className="board-container">
               <div className="board" style={{ transform: isFlipped ? 'rotate(180deg)' : 'none' }}>
                 {Array.from({length:81}).map((_,i)=>{
@@ -451,7 +451,6 @@ function App() {
                 })}
               </div>
             </div>
-            
             <TimeBar time={bottomTime} />
           </section>
 
@@ -465,10 +464,6 @@ function App() {
             ) : null}
           </aside>
         </main>
-        
-        {isGameStarted && !isSpectator && (
-          <button className="menu-float" onClick={() => setShowMenu(true)}>MENU</button>
-        )}
       </div>
 
       {winner && (
@@ -478,16 +473,6 @@ function App() {
               {resultDesc && <p style={{marginTop:'5px', color:'#666'}}>{resultDesc}</p>}
               <button className="reset-large" onClick={resetGame}>로비로</button>
             </div>
-          </div>
-      )}
-
-      {showMenu && (
-          <div className="lobby-overlay" onClick={() => setShowMenu(false)}>
-             <div className="lobby-card" onClick={(e) => e.stopPropagation()}>
-               <div className="menu-title">GAME MENU</div>
-               <button className="menu-btn btn-exit" onClick={resetGame}>나가기 (Exit Game)</button>
-               <button className="menu-btn btn-close" onClick={() => setShowMenu(false)}>닫기 (Close)</button>
-             </div>
           </div>
       )}
     </div>
