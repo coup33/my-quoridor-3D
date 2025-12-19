@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Mobile Fixed Final) */
+/* App.css - Quoridor Web Game Style (Final Robust Fix) */
 
 * {
   box-sizing: border-box;
@@ -36,20 +36,19 @@ body {
   background-color: #212529;
   color: #f8f9fa;
   overflow: hidden;
+  height: 100%;
 }
 
 .container {
   width: 100vw;
-  height: 100vh; 
-  height: 100dvh; 
+  height: 100dvh; /* 모바일 브라우저 높이 대응 */
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  justify-content: center;
   position: relative;
 }
 
-/* --- PC 전용 스타일 --- */
+/* --- PC 전용 스타일 (기존 유지) --- */
 .game-title {
   font-weight: 800;
   letter-spacing: 5px;
@@ -152,94 +151,96 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 줄바꿈 방지 및 정렬 문제 최종 수정 ★
+   ★ 최종 수정: 겹침 방지 및 위치 강제 고정 ★
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    /* 보드 크기: 위아래 여백 확보를 위해 6.2vmin으로 고정 */
-    --cell: 6.2vmin; 
+    /* 보드 크기: 안전하게 줄임 (6.0vmin) */
+    --cell: 6.0vmin; 
     --gap: 1vmin;
     --pawn: 4.5vmin;
     --wall-thick: 1.0vmin;
   }
 
-  /* 1. 타이틀: 상단 중앙 절대 위치 */
+  /* 1. 타이틀: absolute가 아닌 fixed로 최상단 고정 */
   .game-title {
-    position: absolute;
-    top: 15px; /* 상단 여백 15px */
+    position: fixed;
+    top: 10px;
     left: 50%;
-    transform: translateX(-50%); /* 정확한 중앙 정렬 */
+    transform: translateX(-50%);
     width: auto;
     writing-mode: horizontal-tb;
     margin: 0;
     font-size: 1.5rem;
     letter-spacing: 2px;
-    z-index: 100;
+    z-index: 900; /* 메뉴보다 낮게 */
     white-space: nowrap;
   }
 
-  /* 2. 메뉴 버튼: 우측 상단 절대 위치 (타이틀과 같은 라인) */
+  /* 2. 메뉴 버튼: 우측 상단 고정 */
   .menu-float { 
-    position: absolute;
-    top: 15px; 
+    position: fixed; /* absolute -> fixed 변경 */
+    top: 10px;
     right: 15px;
     bottom: auto;
     left: auto;
     padding: 6px 12px; 
-    font-size: 0.8rem; 
-    z-index: 200;
+    font-size: 0.75rem; 
+    z-index: 1000; /* 가장 위에 */
   }
 
-  /* 3. 메인 콘텐츠: 요소 간격 자동 조절 */
+  /* 3. 메인 콘텐츠: 상단 여백(padding-top)으로 겹침 방지 */
   .main-content {
-    flex: 1;
-    flex-direction: column;
-    justify-content: center; /* 화면 중앙에 모으기 */
-    align-items: center;
-    gap: 8px; /* 요소 사이 최소 간격 */
-    padding: 0;
-    /* 상단 타이틀 공간(60px) + 하단 여백 확보 */
-    padding-top: 60px; 
+    padding-top: 60px; /* 타이틀 공간 확보 */
     padding-bottom: 20px;
-    height: 100%;
+    justify-content: center; /* 중앙 정렬 */
+    gap: 10px;
   }
 
-  /* 4. 패널(노란 박스): 줄바꿈 절대 방지 */
+  /* 4. 패널(노란박스): 너비를 초록 바보다 작게 강제 */
   .side-panel {
-    /* 너비 자동 조절 (내용물만큼만) */
-    width: auto;
-    min-width: 260px; /* 최소 너비 확보 */
-    height: 42px;
-    padding: 0 12px;
-    
+    width: 70%; /* 85% -> 70% 축소 */
+    max-width: 280px; 
+    height: 40px;
+    padding: 0 10px;
     display: flex;
     flex-direction: row;
-    justify-content: center; /* 내부 내용 중앙 정렬 */
+    justify-content: space-between;
     align-items: center;
-    gap: 15px; /* 글자와 버튼 사이 간격 */
-    
-    margin: 0 auto;
-    flex-shrink: 0;
-    
-    /* ★ 핵심: 텍스트 줄바꿈 방지 */
-    white-space: nowrap; 
+    margin: 0 auto; /* 중앙 정렬 */
+    flex-shrink: 0; /* 찌그러짐 방지 */
   }
 
-  .wall-counter { margin: 0; padding: 0; background: transparent; font-size: 0.9rem; }
-  .count { display: inline; font-size: 1.1rem; margin-left: 5px; }
+  /* 버튼 그룹 가로 정렬 강제 */
+  .button-group { 
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    flex-wrap: nowrap; /* 줄바꿈 금지 */
+  }
   
-  .button-group { display: flex; flex-direction: row; gap: 8px; flex-wrap: nowrap; }
-  .btn { padding: 4px 12px; font-size: 0.8rem; height: 30px; min-width: 55px; }
+  .btn { 
+    padding: 0 10px; 
+    height: 28px; 
+    line-height: 28px;
+    font-size: 0.75rem;
+    white-space: nowrap; /* 글자 줄바꿈 방지 */
+  }
 
   /* 5. 보드 섹션 */
   .board-section {
-    flex-shrink: 0; /* 보드는 줄어들지 않음 */
-    margin: 5px 0;
+    margin: 0;
+    flex-shrink: 0; /* 보드 줄어들지 않음 */
   }
 
-  /* 타임바 */
-  .time-bar-wrapper { margin-top: 30px; margin-bottom: 5px; width: 280px; }
+  /* 6. 타임바 */
+  .time-bar-wrapper { margin-top: 30px; margin-bottom: 5px; width: 90%; max-width: 350px; }
   .status-badge { font-size: 0.7rem; padding: 2px 8px; top: -25px; }
+
+  /* 7. 하단 패널 위치 확보 */
+  .side-panel:last-child {
+    margin-bottom: 20px;
+  }
 }
 
 /* 로비 & 모달 (변경 없음) */
