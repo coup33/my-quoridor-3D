@@ -3,40 +3,45 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
+// Express 앱 및 서버 생성
 const app = express();
 app.use(cors());
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
+  cors: { origin: "*", methods: ["GET", "POST"] } // 모든 출처 허용
 });
 
-const MAX_TIME = 90; 
-const START_TIME = 60;
-const INCREMENT = 6;  
+// --- [게임 설정 상수] ---
+const MAX_TIME = 90;   // 최대 시간
+const START_TIME = 60; // 시작 시간
+const INCREMENT = 6;   // 턴당 추가 시간
 
+// --- [게임 초기 상태 정의] ---
 const INITIAL_GAME_STATE = {
-  p1: { x: 4, y: 0, wallCount: 10 },
-  p2: { x: 4, y: 8, wallCount: 10 },
-  turn: 1,
-  walls: [],
-  winner: null,
+  p1: { x: 4, y: 0, wallCount: 10 }, // P1 (백) 위치
+  p2: { x: 4, y: 8, wallCount: 10 }, // P2 (흑) 위치
+  turn: 1,           // 현재 턴 (1: 백, 2: 흑)
+  walls: [],         // 설치된 벽 배열
+  winner: null,      // 승자 (1 또는 2)
   p1Time: START_TIME,
   p2Time: START_TIME,
-  lastMove: null, 
-  lastWall: null,
-  isVsAI: false,
-  aiDifficulty: 1 
+  lastMove: null,    // 잔상 표시용 (마지막 이동)
+  lastWall: null,    // 하이라이트용 (마지막 벽)
+  isVsAI: false,     // AI 모드 여부
+  aiDifficulty: 1    // AI 난이도
 };
 
+// --- [서버 전역 변수] ---
 let gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
-let roles = { 1: null, 2: null };
-let readyStatus = { 1: false, 2: false };
-let isGameStarted = false;
-let gameInterval = null;
+let roles = { 1: null, 2: null };      // 플레이어 소켓 ID 저장
+let readyStatus = { 1: false, 2: false }; // 준비 상태
+let isGameStarted = false;             // 게임 시작 여부
+let gameInterval = null;               // 타이머 인터벌
 
-// --- 🧠 AI Helper Functions ---
+// --- [헬퍼 함수: 충돌 감지] ---
 const isBlocked = (cx, cy, tx, ty, walls) => {
+  // 상하좌우 이동 시 벽에 막히는지 확인
   if (ty < cy) return walls.some(w => w.orientation === 'h' && w.y === ty && (w.x === cx || w.x === cx - 1));
   if (ty > cy) return walls.some(w => w.orientation === 'h' && w.y === cy && (w.x === cx || w.x === cx - 1));
   if (tx < cx) return walls.some(w => w.orientation === 'v' && w.x === tx && (w.y === cy || w.y === cy - 1));
@@ -44,6 +49,7 @@ const isBlocked = (cx, cy, tx, ty, walls) => {
   return false;
 };
 
+// --- [헬퍼 함수: 최단 경로 탐색 (BFS)] ---
 const getPathData = (startNode, targetRow, currentWalls) => {
   const queue = [{ x: startNode.x, y: startNode.y, dist: 0, parent: null }];
   const visited = new Set();
@@ -52,6 +58,7 @@ const getPathData = (startNode, targetRow, currentWalls) => {
   
   while (queue.length > 0) {
     const current = queue.shift();
+    // 목표 행(row)에 도달하면 경로 반환
     if (current.y === targetRow) {
       let path = [];
       let temp = current;
@@ -69,6 +76,7 @@ const getPathData = (startNode, targetRow, currentWalls) => {
     for (let dir of directions) {
       const nx = current.x + dir.dx;
       const ny = current.y + dir.dy;
+      // 보드 범위 내이고, 방문 안 했고, 벽에 안 막혔으면 큐에 추가
       if (nx >= 0 && nx < 9 && ny >= 0 && ny < 9) {
         if (!visited.has(`${nx},${ny}`) && !isBlocked(current.x, current.y, nx, ny, currentWalls)) {
           visited.add(`${nx},${ny}`);
@@ -77,10 +85,12 @@ const getPathData = (startNode, targetRow, currentWalls) => {
       }
     }
   }
-  return null;
+  return null; // 길 없음
 };
 
+// --- [헬퍼 함수: 벽 설치 유효성 검사] ---
 const isValidWall = (x, y, orientation, currentWalls, p1Pos, p2Pos) => {
+  // 1. 벽 겹침 확인
   const isOverlap = currentWalls.some(w => {
     if (w.x === x && w.y === y && w.orientation === orientation) return true;
     if (w.orientation === orientation) {
@@ -92,6 +102,7 @@ const isValidWall = (x, y, orientation, currentWalls, p1Pos, p2Pos) => {
   });
   if (isOverlap) return false;
 
+  // 2. 길 막힘 확인 (양쪽 플레이어 모두 길이 있어야 함)
   const simulatedWalls = [...currentWalls, { x, y, orientation }];
   const p1Path = getPathData(p1Pos, 8, simulatedWalls);
   const p2Path = getPathData(p2Pos, 0, simulatedWalls);
@@ -99,10 +110,11 @@ const isValidWall = (x, y, orientation, currentWalls, p1Pos, p2Pos) => {
   return p1Path !== null && p2Path !== null;
 };
 
-// --- 🤖 AI Process Logic ---
+// --- [AI 로직 처리 함수] ---
 const processAIMove = () => {
   if (gameState.winner) return;
 
+  // 사람처럼 보이게 1초 딜레이
   setTimeout(() => {
     const p2Pos = { x: gameState.p2.x, y: gameState.p2.y };
     const p1Pos = { x: gameState.p1.x, y: gameState.p1.y };
@@ -112,12 +124,16 @@ const processAIMove = () => {
     let moveAction = null;
     let wallAction = null;
 
+    // 경로 계산
     const myPathData = getPathData(p2Pos, 0, walls);
     const oppPathData = getPathData(p1Pos, 8, walls);
 
+    // --- 난이도별 행동 결정 ---
+    // Level 1: 매우 쉬움 (이동만)
     if (difficulty === 1) { 
        if (myPathData && myPathData.nextStep) moveAction = myPathData.nextStep;
     }
+    // Level 2: 쉬움 (가끔 랜덤 벽)
     else if (difficulty === 2) { 
       const randomAction = Math.random();
       if (randomAction > 0.8 && gameState.p2.wallCount > 0) {
@@ -133,6 +149,7 @@ const processAIMove = () => {
       }
       if (!wallAction && myPathData && myPathData.nextStep) moveAction = myPathData.nextStep;
     }
+    // Level 3: 보통 (방어적)
     else if (difficulty === 3) { 
       if (oppPathData && oppPathData.distance <= 3 && gameState.p2.wallCount > 0) {
          const targetNode = oppPathData.fullPath[1] || oppPathData.fullPath[0];
@@ -153,6 +170,7 @@ const processAIMove = () => {
       }
       if (!wallAction && myPathData && myPathData.nextStep) moveAction = myPathData.nextStep;
     }
+    // Level 4: 어려움 (최적 방해)
     else if (difficulty === 4) { 
       const myDist = myPathData ? myPathData.distance : 999;
       const oppDist = oppPathData ? oppPathData.distance : 999;
@@ -190,8 +208,10 @@ const processAIMove = () => {
       if (!wallAction && myPathData && myPathData.nextStep) moveAction = myPathData.nextStep;
     }
     
+    // Fallback: 아무 결정 없으면 이동
     if (!moveAction && !wallAction && myPathData && myPathData.nextStep) moveAction = myPathData.nextStep;
 
+    // --- 상태 업데이트 ---
     let newState = { ...gameState };
     
     if (wallAction) {
@@ -206,8 +226,8 @@ const processAIMove = () => {
         if (newState.p2.y === 0) newState.winner = 2;
     }
 
-    newState.turn = 1;
-    newState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT);
+    newState.turn = 1; // 턴 넘기기
+    newState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT); // 시간 충전
     
     gameState = newState;
     io.emit('update_state', gameState);
@@ -215,9 +235,10 @@ const processAIMove = () => {
   }, 1000);
 };
 
-// --- Socket Handlers ---
+// --- [헬퍼 함수: 로비 상태 브로드캐스트] ---
 const broadcastLobby = () => io.emit('lobby_update', { roles, readyStatus, isGameStarted });
 
+// --- [헬퍼 함수: 타이머 시작] ---
 const startGameTimer = () => {
   if (gameInterval) clearInterval(gameInterval);
   gameInterval = setInterval(() => {
@@ -233,17 +254,20 @@ const startGameTimer = () => {
   }, 1000);
 };
 
+// --- [소켓 연결 처리] ---
 io.on('connection', (socket) => {
+  console.log(`[접속] ${socket.id}`);
   socket.emit('lobby_update', { roles, readyStatus, isGameStarted });
   if (isGameStarted) socket.emit('update_state', gameState);
 
+  // 역할 선택
   socket.on('select_role', (role) => {
     role = parseInt(role);
-    if (role === 0) {
+    if (role === 0) { // 선택 취소
       if (roles[1]===socket.id) { roles[1]=null; readyStatus[1]=false; }
       if (roles[2]===socket.id) { roles[2]=null; readyStatus[2]=false; }
     } else {
-      if (roles[role] && roles[role] !== socket.id) return;
+      if (roles[role] && roles[role] !== socket.id) return; // 이미 누가 있음
       if (roles[1]===socket.id) { roles[1]=null; readyStatus[1]=false; }
       if (roles[2]===socket.id) { roles[2]=null; readyStatus[2]=false; }
       roles[role] = socket.id;
@@ -251,10 +275,13 @@ io.on('connection', (socket) => {
     broadcastLobby();
   });
 
+  // 준비 완료 토글
   socket.on('player_ready', (role) => {
     if (roles[role] !== socket.id) return;
     readyStatus[role] = !readyStatus[role];
     broadcastLobby();
+    
+    // 둘 다 준비되면 게임 시작
     if (roles[1] && roles[2] && readyStatus[1] && readyStatus[2]) {
       isGameStarted = true;
       gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
@@ -265,6 +292,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // AI 게임 시작
   socket.on('start_ai_game', (difficulty) => {
     roles = { 1: socket.id, 2: 'AI' };
     readyStatus = { 1: true, 2: true };
@@ -279,10 +307,12 @@ io.on('connection', (socket) => {
     startGameTimer();
   });
 
+  // 게임 행동 수신 (이동/벽)
   socket.on('game_action', (newState) => {
     if (roles[1] !== socket.id && roles[2] !== socket.id) return;
     if (gameState.winner) return;
 
+    // 잔상 & 마지막 벽 데이터 갱신
     let newLastMove = gameState.lastMove;
     let newLastWall = null;
     if (gameState.p1.x !== newState.p1.x || gameState.p1.y !== newState.p1.y) {
@@ -293,6 +323,7 @@ io.on('connection', (socket) => {
        if (walls.length > 0) newLastWall = walls[walls.length-1];
     }
     
+    // 시간 충전
     const prevTurn = gameState.turn;
     gameState = { ...newState, p1Time: gameState.p1Time, p2Time: gameState.p2Time, lastMove: newLastMove, lastWall: newLastWall };
     
@@ -301,48 +332,44 @@ io.on('connection', (socket) => {
 
     io.emit('update_state', gameState);
 
+    // AI 턴이면 AI 로직 실행
     if (gameState.isVsAI && gameState.turn === 2 && !gameState.winner) {
         processAIMove();
     }
   });
 
-  // ★ [수정됨] 항복(Resign) 또는 리셋 시 AI 제거 로직
+  // 기권 (Resign)
   socket.on('resign_game', () => {
     let p = null;
     if (roles[1]===socket.id) p=1; else if (roles[2]===socket.id) p=2;
     if (p && isGameStarted && !gameState.winner) {
       gameState.winner = p===1?2:1;
       if (gameInterval) clearInterval(gameInterval);
-      
-      // 만약 AI전이었다면 AI는 바로 방을 나간다 (게임 끝났으니)
-      if (roles[2] === 'AI') {
-          // AI 게임 끝났을 때의 처리 (선택사항: 여기서 roles[2]를 비워도 되고, reset_game에서 비워도 됨)
-          // 보통 항복 후 '로비로'를 누르면 reset_game이 호출됨.
-      }
-      
       io.emit('update_state', gameState);
     }
   });
 
+  // 게임 리셋 (나가기 기능)
   socket.on('reset_game', () => {
+    // 권한 확인: 플레이어만 리셋 가능
     if (roles[1]!==socket.id && roles[2]!==socket.id) return;
     
     if (gameInterval) clearInterval(gameInterval);
     isGameStarted = false;
     readyStatus = { 1: false, 2: false };
     
-    // ★ [핵심 수정] AI가 자리를 차지하고 있었다면 쫓아내기 (null로 변경)
+    // AI전이었다면 AI 퇴장
     if (roles[2] === 'AI') {
         roles[2] = null;
-        // P1(유저)의 준비 상태도 해제
         readyStatus[1] = false;
     }
 
     gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
-    io.emit('game_start', false);
+    io.emit('game_start', false); // 클라이언트들에게 로비로 돌아가라고 알림
     broadcastLobby();
   });
 
+  // 연결 끊김
   socket.on('disconnect', () => {
     const isP1 = roles[1]===socket.id;
     const isP2 = roles[2]===socket.id;
@@ -351,7 +378,7 @@ io.on('connection', (socket) => {
       if (isP1) { roles[1]=null; readyStatus[1]=false; }
       if (isP2) { roles[2]=null; readyStatus[2]=false; }
       
-      // ★ [핵심 수정] 사람이 나갔는데 상대가 AI였다면 AI도 같이 제거
+      // P1이 나갔는데 상대가 AI면 AI도 제거
       if (isP1 && roles[2] === 'AI') {
           roles[2] = null;
           readyStatus[2] = false;
