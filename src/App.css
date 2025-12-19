@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Mobile Final Layout v3) */
+/* App.css - Quoridor Web Game Style (Mobile Fixed v4) */
 
 * {
   box-sizing: border-box;
@@ -46,7 +46,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   justify-content: center;
-  position: relative; /* 중요: 타이틀/메뉴 버튼 절대 위치 기준 */
+  position: relative; 
 }
 
 /* PC 타이틀 */
@@ -146,9 +146,13 @@ body {
 .placed-wall.latest { background: #ffec99 !important; box-shadow: 0 0 10px #fcc419, 0 2px 4px rgba(0,0,0,0.5); animation: wallPulse 2s infinite; z-index: 25; }
 @keyframes wallPulse { 0% { box-shadow: 0 0 5px #fcc419; } 50% { box-shadow: 0 0 15px #fcc419; } 100% { box-shadow: 0 0 5px #fcc419; } }
 
+/* 메뉴 버튼 (PC) */
+.menu-float { position: fixed; bottom: 20px; left: 20px; padding: 10px 20px; background-color: #343a40; color: white; border: 1px solid #495057; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 500; }
+.menu-float:hover { background-color: #495057; }
+
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 사용자 요청 반영 최종 수정 ★
+   ★ 여기를 최종 수정함 ★
    ================================================= */
 @media (max-width: 768px) {
   :root {
@@ -159,68 +163,71 @@ body {
     --wall-thick: 1.0vmin;
   }
 
-  /* 1. 타이틀을 최상단으로 올림 (간격 거의 없앰) */
+  /* 1. 타이틀: 최상단 고정 및 중앙 정렬 */
   .game-title {
-    position: absolute;
-    top: 5px; /* 화면 맨 위로 바짝 붙임 */
-    left: 0;
-    width: 100%;
-    text-align: center;
-    transform: none;
+    position: fixed; /* absolute -> fixed로 변경하여 스크롤 영향 최소화 */
+    top: 15px;       /* 상단 여백 조금 더 확보 */
+    left: 50%;       /* 중앙 기준점 */
+    transform: translateX(-50%); /* 정확한 중앙 정렬 */
+    width: auto;     /* 폭 자동 */
     writing-mode: horizontal-tb;
     margin: 0;
     font-size: 1.5rem;
-    letter-spacing: 2px;
-    z-index: 50;
+    letter-spacing: 3px;
+    z-index: 200;    /* 메뉴보다 위? 아래? 배치 고려 */
+    white-space: nowrap;
   }
 
-  /* 2. 메인 콘텐츠 구조 */
+  /* 2. 메인 콘텐츠: 상단 여백(padding-top)으로 타이틀 공간 확보 */
   .main-content {
     flex-direction: column;
     justify-content: center;
     gap: 5px;
     padding: 0;
-    /* 상단 타이틀 공간 확보 */
-    padding-top: 35px; 
+    padding-top: 50px; /* 타이틀과 겹치지 않게 밀어냄 */
     height: 100%;
   }
 
-  /* 3. 상하단 패널 (벽 정보) */
+  /* 3. 벽 정보 패널: 타임바보다 작게, 알약 모양 */
   .side-panel {
-    /* ★ 너비를 70%로 줄여서 타임바보다 짧게 만듦 */
-    width: 70%;
-    max-width: 300px;
+    width: auto;          /* 내용물에 맞게 */
+    min-width: 200px;     /* 최소 너비 */
+    max-width: 280px;     /* 최대 너비 제한 (타임바보다 작게) */
     height: 40px;
-    padding: 0 15px;
+    padding: 0 20px;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    margin: 0;
+    margin: 0 auto;       /* 중앙 정렬 */
     flex-shrink: 0;
+    border-radius: 50px;  /* 알약 모양 */
   }
 
-  /* 4. 메뉴 버튼을 우측 상단으로 이동 (타이틀 옆) */
+  /* 4. 메뉴 버튼: 우측 상단 고정 (크기 제한 필수!) */
   .menu-float { 
-    position: absolute;
-    top: 5px; /* 타이틀과 같은 높이 */
-    right: 15px;
+    position: fixed;
+    top: 15px;       /* 타이틀과 같은 높이 */
+    right: 15px;     /* 우측 모서리 */
     bottom: auto;
     left: auto;
     padding: 6px 12px; 
     font-size: 0.75rem; 
-    z-index: 100;
+    z-index: 300;    /* 타이틀보다 높게 */
+    width: auto !important; /* ★ 화면 가림 방지 핵심 */
+    max-width: fit-content;
+    height: auto;
   }
 
-  /* 5. 보드 섹션 여백 최소화 */
+  /* 5. 보드 섹션 */
   .board-section {
     height: auto;
-    margin: 3px 0;
+    margin: 5px 0;
   }
 
-  /* 6. 하단 패널이 잘리지 않도록 마진 확보 */
+  /* 6. 하단 패널 여백 확보 */
   .side-panel:last-child {
-    margin-bottom: 20px; /* 적당한 하단 여백 */
+    margin-bottom: 20px; 
   }
 
   .wall-counter { margin: 0; padding: 0; background: transparent; font-size: 0.9rem; white-space: nowrap; }
@@ -231,6 +238,7 @@ body {
 
   /* 타임바 여백 */
   .time-bar-wrapper { margin-top: 30px; margin-bottom: 5px; }
+  /* 배지 위치 */
   .status-badge { font-size: 0.7rem; padding: 2px 8px; top: -25px; }
 }
 
@@ -249,10 +257,7 @@ body {
 .start-btn { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 .cancel-btn { width: 100%; margin-top: 10px; padding: 10px; background: #868e96; color: white; border: none; border-radius: 8px; cursor: pointer; }
 
-/* 메뉴 플로팅 버튼 (PC용 - 모바일은 미디어 쿼리에서 덮어씀) */
-.menu-float { position: fixed; bottom: 20px; left: 20px; padding: 10px 20px; background-color: #343a40; color: white; border: 1px solid #495057; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 500; }
-.menu-float:hover { background-color: #495057; }
-
+/* 메뉴 모달 내 버튼 */
 .menu-title { margin-bottom: 20px; font-size: 1.5rem; font-weight: bold; color: #333; }
 .menu-btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 1rem; }
 .btn-exit { background-color: #e03131; color: white; }
