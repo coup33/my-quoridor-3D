@@ -8,12 +8,11 @@ app.use(cors());
 
 const server = http.createServer(app);
 
-// ★ [수정] pingTimeout: 10000 (10초)
-// 10초 동안 응답이 없으면 연결 끊김 처리 (너무 짧으면 튕김, 너무 길면 지루함)
+// pingTimeout: 10초 (네트워크 끊김 방지 최적화)
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
-  pingTimeout: 10000,  // 10초 대기 (이걸 3000으로 줄이면 3초가 됩니다)
-  pingInterval: 5000   // 5초마다 생존 확인 (핑 보내기)
+  pingTimeout: 10000, 
+  pingInterval: 5000 
 });
 
 const MAX_TIME = 90; 
@@ -222,10 +221,19 @@ io.on('connection', (socket) => {
 
     let newLastMove = gameState.lastMove;
     let newLastWall = null;
+
+    // 1. P1 이동 확인
     if (gameState.p1.x !== newState.p1.x || gameState.p1.y !== newState.p1.y) {
        newLastMove = { player: 1, x: gameState.p1.x, y: gameState.p1.y };
        newLastWall = null;
-    } else if ((newState.walls||[]).length > (gameState.walls||[]).length) {
+    } 
+    // 2. ★ [추가] P2 이동 확인 (이게 빠져 있어서 흑색 잔상이 안 남았습니다)
+    else if (gameState.p2.x !== newState.p2.x || gameState.p2.y !== newState.p2.y) {
+       newLastMove = { player: 2, x: gameState.p2.x, y: gameState.p2.y };
+       newLastWall = null;
+    }
+    // 3. 벽 설치 확인
+    else if ((newState.walls||[]).length > (gameState.walls||[]).length) {
        const walls = newState.walls || [];
        if (walls.length > 0) newLastWall = walls[walls.length-1];
     }
@@ -284,7 +292,6 @@ io.on('connection', (socket) => {
       if (isP1) { roles[1]=null; readyStatus[1]=false; }
       if (isP2) { roles[2]=null; readyStatus[2]=false; }
       
-      // AI 모드가 아닐 때, 실제 플레이어가 나가면 게임 종료
       if (isGameStarted) {
         if (gameInterval) clearInterval(gameInterval);
         isGameStarted = false;
