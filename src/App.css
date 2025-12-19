@@ -1,4 +1,4 @@
-/* App.css - Final Fixed (Centered Horizontally) */
+/* App.css - Reverted to "Perfect" State with Mobile 100dvh Fix */
 
 * {
   box-sizing: border-box;
@@ -14,6 +14,7 @@
   --gap: 8px;
   --pawn: 40px;
   --wall-thick: 10px;
+  
   --unit: calc(var(--cell) + var(--gap));
   --wall-long: calc(var(--cell) * 2 + var(--gap));
 }
@@ -23,66 +24,93 @@
   :root { --cell: 42px; --gap: 6px; --pawn: 30px; --wall-thick: 8px; }
   .game-title { font-size: 2rem !important; left: 10px !important; }
   .time-bar-wrapper { margin-top: 30px !important; margin-bottom: 4px !important; height: 20px !important; }
+  .status-badge { top: -25px !important; font-size: 0.7rem !important; }
+  .turn-display { font-size: 1rem !important; margin-bottom: 2px !important; }
   .side-panel { width: 140px !important; padding: 10px !important; }
   .count { font-size: 1.2rem !important; }
   .btn { padding: 8px !important; font-size: 0.9rem !important; }
 }
 
-/* ★ 1. 모바일 뷰포트 & 스크롤 방지 */
+/* ★ 모바일 스크롤 튕김 및 높이 버그 방지 */
 body {
   font-family: 'Pretendard', sans-serif;
   background-color: #212529;
   color: #f8f9fa;
+  
   width: 100vw;
-  height: 100dvh;
+  height: 100dvh; /* dvh 사용 */
   position: fixed;
-  overflow: hidden;
-  overscroll-behavior: none;
+  overflow: hidden; 
+  overscroll-behavior: none; 
+  
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* ★ 2. 컨테이너 (여기가 핵심 수정됨) */
 .container {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  
-  /* [수정] 위쪽으로 정렬하되, 가로는 중앙으로! */
-  justify-content: flex-start; 
-  align-items: center; /* ★ 이 줄이 왼쪽 쏠림을 해결합니다 */
-  
+  justify-content: center;
   position: relative;
+  
+  /* 안전 영역 확보 */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* --- [PC 전용 스타일] --- */
+/* --- PC 전용 스타일 --- */
 .game-title {
-  font-weight: 800; letter-spacing: 5px; color: #adb5bd;
-  text-transform: uppercase; position: fixed;
-  left: 20px; top: 50%; transform: translateY(-50%);
-  writing-mode: vertical-rl; text-orientation: upright;
-  z-index: 100; margin: 0; font-size: 2.5rem;
-}
-.header { display: none; }
-.game-wrapper {
-  flex: 1; width: 100%; height: 100%;
-  display: flex; justify-content: center; align-items: center;
-  position: relative; transition: filter 0.3s;
-}
-.game-wrapper.blurred { filter: blur(5px); pointer-events: none; }
-.main-content {
-  display: flex; align-items: center; justify-content: center;
-  gap: 30px; width: 100%; height: 100%; padding: 10px 0;
+  font-weight: 800;
+  letter-spacing: 5px;
+  color: #adb5bd;
+  text-transform: uppercase;
+  position: fixed;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl; 
+  text-orientation: upright;
+  z-index: 100;
+  margin: 0;
+  font-size: 2.5rem;
 }
 
-/* 패널 & 버튼 */
+.header { display: none; }
+
+.game-wrapper {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  transition: filter 0.3s;
+}
+
+.game-wrapper.blurred { filter: blur(5px); pointer-events: none; }
+
+.main-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  width: 100%;
+  height: 100%;
+  padding: 10px 0;
+}
+
+/* 플레이어 패널 (PC) */
 .side-panel {
-  width: 160px; padding: 15px; background: #343a40;
-  border: 1px solid #495057; border-radius: 12px;
-  text-align: center; transition: all 0.3s;
+  width: 160px;
+  padding: 15px;
+  background: #343a40;
+  border: 1px solid #495057;
+  border-radius: 12px;
+  text-align: center;
+  transition: all 0.3s;
 }
 .side-panel.active { border: 2px solid #fcc419; box-shadow: 0 0 15px rgba(252, 196, 25, 0.3); }
 .wall-counter { background: #212529; padding: 8px; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem; }
@@ -92,22 +120,56 @@ body {
 .btn.selected { background: #fcc419; color: black; }
 .btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* 보드 & 타임바 */
+/* 보드 섹션 (PC) */
 .board-section { display: flex; flex-direction: column; align-items: center; justify-content: center; width: auto; height: 100%; }
-.time-bar-container { width: 95%; max-width: 480px; margin: 8px 0; margin-top: 20px; }
-.time-info-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 5px; width: 100%; }
-.info-left { justify-self: start; } .info-center { justify-self: center; } .info-right { justify-self: end; }
-.status-badge { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: white; white-space: nowrap; }
+.t-white { color: #ced4da; } .t-black { color: #868e96; }
+
+/* 타임 바 컨테이너 & 상단 정보창 */
+.time-bar-container {
+  width: 95%; max-width: 480px;
+  margin: 8px 0;
+  margin-top: 20px;
+}
+
+.time-info-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-bottom: 5px;
+  width: 100%;
+}
+
+.info-left { justify-self: start; }
+.info-center { justify-self: center; }
+.info-right { justify-self: end; }
+
+.status-badge {
+  padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; 
+  font-weight: bold; color: white; white-space: nowrap;
+}
 .badge-spectator { background-color: #e03131; animation: pulse 2s infinite; } 
 .badge-ingame { background-color: #228be6; }
 .badge-resign { background-color: #343a40; color: #fa5252; border: 1px solid #fa5252; cursor: pointer; transition: 0.2s; }
-.turn-indicator-box { display: flex; align-items: center; gap: 6px; font-weight: bold; color: #ced4da; font-size: 0.9rem; }
+.badge-resign:hover { background-color: #fa5252; color: white; }
+
+.turn-indicator-box {
+  display: flex; align-items: center; gap: 6px; font-weight: bold; color: #ced4da; font-size: 0.9rem;
+}
 .turn-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-.dot-white { background-color: #f8f9fa; border: 1px solid #adb5bd; } .dot-black { background-color: #212529; border: 1px solid #868e96; }
-.time-bar-track { width: 100%; height: 24px; background-color: #343a40; border-radius: 12px; overflow: hidden; position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
-.time-bar-fill { height: 100%; background-color: #27ae60; width: 100%; border-radius: 12px; transition: width 0.5s linear; }
+.dot-white { background-color: #f8f9fa; border: 1px solid #adb5bd; }
+.dot-black { background-color: #212529; border: 1px solid #868e96; }
+
+.time-bar-track {
+  width: 100%; height: 24px; background-color: #343a40; border-radius: 12px; 
+  overflow: hidden; position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+}
+.time-bar-fill { height: 100%; background-color: #27ae60; width: 100%; border-radius: 12px; transition: width 0.5s linear, background-color 0.3s; }
 .time-bar-fill.warning { background-color: #fcc419; } .time-bar-fill.danger { background-color: #e03131; }
 .time-text { position: absolute; width: 100%; text-align: center; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); z-index: 2; }
+
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+/* 보드 (PC) */
 .board-container { padding: 10px; background: #181a1b; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); flex-shrink: 0; }
 .board { position: relative; display: grid; grid-template-columns: repeat(9, var(--cell)); grid-template-rows: repeat(9, var(--cell)); gap: var(--gap); transition: transform 0.5s ease; }
 .cell { width: var(--cell); height: var(--cell); background: #495057; border-radius: 2px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
@@ -115,7 +177,7 @@ body {
 .pawn { width: var(--pawn); height: var(--pawn); border-radius: 50%; z-index: 5; box-shadow: 0 2px 5px rgba(0,0,0,0.5); transition: 0.2s; }
 .white-pawn { background: #f8f9fa; } .black-pawn { background: #212529; border: 2px solid #868e96; }
 .move-dot { width: 25%; height: 25%; background: rgba(0,0,0,0.3); border-radius: 50%; }
-.ghost-pawn { width: var(--pawn); height: var(--pawn); border-radius: 50%; position: absolute; z-index: 4; opacity: 0.4; pointer-events: none; transform: scale(0.8); }
+.ghost-pawn { width: var(--pawn); height: var(--pawn); border-radius: 50%; position: absolute; z-index: 4; opacity: 0.4; pointer-events: none; transform: scale(0.8); box-shadow: none; }
 .ghost-white { background: #f8f9fa; border: 2px dashed #adb5bd; } .ghost-black { background: #212529; border: 2px dashed #868e96; }
 .wall-target { position: absolute; z-index: 10; transition: background 0.2s; }
 .wall-target.in-wall-mode { cursor: pointer; }
@@ -124,100 +186,137 @@ body {
 .wall-target.h, .placed-wall.h { width: var(--wall-long); height: var(--wall-thick); }
 .wall-target.v, .placed-wall.v { width: var(--wall-thick); height: var(--wall-long); }
 .placed-wall { position: absolute; background: #e03131; z-index: 20; border-radius: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; }
-.placed-wall.latest { background: #ffec99 !important; box-shadow: 0 0 10px #fcc419; animation: wallPulse 2s infinite; z-index: 25; }
+.placed-wall.latest { background: #ffec99 !important; box-shadow: 0 0 10px #fcc419, 0 2px 4px rgba(0,0,0,0.5); animation: wallPulse 2s infinite; z-index: 25; }
 @keyframes wallPulse { 0% { box-shadow: 0 0 5px #fcc419; } 50% { box-shadow: 0 0 15px #fcc419; } 100% { box-shadow: 0 0 5px #fcc419; } }
+
+/* 메뉴 플로팅 버튼 (PC용) */
 .menu-float { position: fixed; bottom: 20px; left: 20px; padding: 10px 20px; background-color: #343a40; color: white; border: 1px solid #495057; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 500; }
+.menu-float:hover { background-color: #495057; }
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
+   ★ 전략: 상단/하단 고정(Anchored) + 중앙 요소 위로 이동(Lifted)
+   ★ 사용자님이 "완벽하다"고 했던 그 레이아웃 복원
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    --cell: 6.2vmin;
+    --cell: 6.0vmin; 
     --gap: 1vmin;
-    --pawn: 4.3vmin;
+    --pawn: 4.2vmin;
     --wall-thick: 1.0vmin;
   }
 
-  /* 1. 컨테이너: 상단 정렬 + 가로 중앙 정렬! */
+  /* 1. 컨테이너: 상단 정렬 */
   .container {
     justify-content: flex-start;
-    align-items: center; /* ★ 여기가 추가되었습니다! */
     padding-top: 0;
   }
 
-  /* 2. 타이틀: 흐름 내 배치 */
+  /* 2. [상단 고정] 타이틀 - 위쪽 여백 축소 */
   .game-title {
-    position: relative;
-    top: auto; left: auto; transform: none; writing-mode: horizontal-tb;
-    width: 100%; text-align: center;
-    margin: 5px 0;
-    font-size: 1.3rem; letter-spacing: 2px; z-index: 100; white-space: nowrap;
-  }
-  .menu-float { 
-    position: absolute; top: 15px; right: 15px; bottom: auto; left: auto;
-    padding: 6px 12px; font-size: 0.8rem; z-index: 200;
+    position: absolute; 
+    top: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    writing-mode: horizontal-tb;
+    margin: 0;
+    font-size: 1.3rem;
+    letter-spacing: 2px;
+    z-index: 100;
+    white-space: nowrap;
   }
 
-  /* 3. 하단 고정 내 패널 */
+  /* 3. [상단 고정] 메뉴 버튼 */
+  .menu-float { 
+    position: absolute;
+    top: 5px; 
+    right: 15px;
+    bottom: auto; left: auto;
+    padding: 6px 12px; 
+    font-size: 0.8rem; 
+    z-index: 200;
+  }
+
+  /* 4. [하단 고정] 행동 버튼 뭉치 (내 패널) */
   .side-panel.pos-bottom {
     position: absolute;
-    bottom: 80px; left: 50%; transform: translateX(-50%);
-    width: 90%; max-width: 350px; height: 45px;
-    margin: 0; padding: 0 15px; z-index: 100;
-    display: flex; justify-content: space-between; align-items: center;
-    background: #343a40; box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+    bottom: 60px; /* ★ 사용자 요청: 띄우기 */
+    left: 50%;
+    transform: translateX(-50%);
+    
+    width: 90%; 
+    max-width: 350px;
+    height: 45px;
+    margin: 0;
+    padding: 0 15px;
+    z-index: 100;
+    
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    white-space: nowrap;
+    
+    background: #343a40;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
   }
 
-  /* 4. 중앙 뭉치 (상대패널+보드) */
+  /* 5. [중앙 영역] 메인 콘텐츠 */
+  /* ★ Space-Evenly로 비율 배분하던 그 시절 로직 복원 */
   .main-content {
     flex: 1;
-    display: flex; flex-direction: column;
-    /* 상단 패딩으로 위치 잡기 */
-    padding-top: 50px; 
-    padding-bottom: 140px; 
+    display: flex;
+    flex-direction: column;
     
-    justify-content: center; 
-    align-items: center; /* 내부 요소도 중앙 정렬 */
+    /* 상하단 고정 요소 영역 침범 방지 */
+    padding-top: 50px; 
+    padding-bottom: 160px; 
+    
+    /* 요소들을 균등하게 배분해서 띄움 */
+    justify-content: space-evenly; 
+    align-items: center;
     gap: 0;
-    width: 100%; /* 너비 100% 필수 */
     height: 100%;
   }
 
-  /* 5. 상대 패널 */
+  /* 6. [상단 패널] 상대방 정보 */
   .side-panel.pos-top {
-    position: relative; 
-    width: 75%; max-width: 280px; height: 38px;
+    width: 75%;
+    max-width: 280px;
+    height: 38px;
     padding: 0 10px;
-    display: flex; justify-content: space-between; align-items: center;
-    margin: 0 auto; /* 가로 중앙 정렬 */
-    margin-bottom: 5px; 
+    
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 auto;
     flex-shrink: 0;
+    white-space: nowrap;
   }
 
-  /* 6. 보드 섹션 */
+  /* 7. 보드 섹션 */
   .board-section {
-    flex-shrink: 0; margin: 0;
-    display: flex; flex-direction: column;
-    justify-content: center; align-items: center;
+    flex-shrink: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
   }
-  
-  .time-bar-container { 
-    width: 85%; max-width: 300px; 
-    margin-top: 0 !important; 
-    margin-bottom: 5px;
-    flex-shrink: 0; 
-  }
-  
-  /* 기타 모바일 폰트/버튼 조정 */
-  .status-badge { font-size: 0.65rem; padding: 2px 6px; }
+
+  /* 버튼, 텍스트 스타일 */
   .wall-counter { margin: 0; padding: 0; background: transparent; font-size: 0.9rem; }
   .count { display: inline; font-size: 1.1rem; margin-left: 5px; }
   .button-group { display: flex; flex-direction: row; gap: 8px; flex-wrap: nowrap; flex-shrink: 0; }
   .btn { padding: 0 12px; font-size: 0.8rem; height: 32px; min-width: 55px; display: flex; align-items: center; justify-content: center; }
+
+  /* 타임바 */
+  .turn-display { margin-bottom: 2px; font-size: 0.9rem; flex-shrink: 0; }
+  .time-bar-container { width: 85%; max-width: 300px; margin-top: 5px; flex-shrink: 0; }
+  .status-badge { font-size: 0.65rem; padding: 2px 6px; }
 }
 
-/* 로비 & 모달 */
+/* 로비 & 모달 (변경 없음) */
 .lobby-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; }
 .lobby-card { background: white; color: #333; padding: 30px; border-radius: 15px; width: 85%; max-width: 380px; text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
 .difficulty-overlay { width: 100%; height: auto; background: white; padding: 10px 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; }

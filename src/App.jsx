@@ -24,6 +24,14 @@ const playSound = (name) => {
   }
 };
 
+// ★ 전체 화면 함수 (유지)
+const enterFullScreen = () => {
+  const doc = document.documentElement;
+  if (doc.requestFullscreen) doc.requestFullscreen().catch(err => console.log(err));
+  else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
+  else if (doc.mozRequestFullScreen) doc.mozRequestFullScreen();
+};
+
 const TimeBar = ({ time, maxTime = 90, left, center, right }) => {
   const percentage = Math.min(100, Math.max(0, (time / maxTime) * 100));
   let statusClass = '';
@@ -103,6 +111,7 @@ function App() {
       setIsGameStarted(started);
       if (started) {
         playSound('start');
+        enterFullScreen(); // 게임 시작 시 전체화면 시도
         prevStateRef.current = JSON.parse(JSON.stringify(initialState));
         setLastMove(null);
         setLastWall(null);
@@ -160,10 +169,18 @@ function App() {
 
   const emitAction = (newState) => socket.emit('game_action', newState);
   const selectRole = (role) => socket.emit('select_role', role);
-  const toggleReady = () => myRole && socket.emit('player_ready', myRole);
+  
+  const toggleReady = () => {
+    enterFullScreen();
+    if (myRole) socket.emit('player_ready', myRole);
+  };
+  
   const resetGame = () => { socket.emit('reset_game'); };
   const resignGame = () => { if(window.confirm("정말 기권하시겠습니까?")) socket.emit('resign_game'); };
-  const startAiGame = (difficulty) => { socket.emit('start_ai_game', difficulty); };
+  const startAiGame = (difficulty) => { 
+    enterFullScreen();
+    socket.emit('start_ai_game', difficulty); 
+  };
 
   const isMyTurn = turn === myRole;
 
@@ -244,7 +261,7 @@ function App() {
   };
 
   const isSpectator = isGameStarted && myRole !== 1 && myRole !== 2;
-  const isFlipped = myRole === 1; 
+  const isFlipped = myRole === 1; // 내가 P1이면 화면 뒤집힘 (P1이 아래쪽)
   const topTime = isFlipped ? p2Time : p1Time;
   const bottomTime = isFlipped ? p1Time : p2Time;
 
@@ -290,6 +307,7 @@ function App() {
     else if (winReason === 'resign') resultDesc = "(기권)";
   }
 
+  // ★ 중요: pos-top, pos-bottom 클래스를 사용해 위아래 고정
   return (
     <div className="container">
       <div className="game-title">QUORIDOR</div>
@@ -344,8 +362,7 @@ function App() {
 
       <div className={`game-wrapper ${!isGameStarted ? 'blurred' : ''}`}>
         <main className="main-content">
-          {/* P1 패널 */}
-          <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 3 : 1 }}>
+          <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''} ${isFlipped ? 'pos-bottom' : 'pos-top'}`} style={{ order: isFlipped ? 3 : 1 }}>
             <div className="wall-counter white-box">벽: <span className="count">{player1.wallCount}</span></div>
             {myRole === 1 ? (
               <div className="button-group">
@@ -399,8 +416,7 @@ function App() {
             <TimeBar time={bottomTime} />
           </section>
 
-          {/* P2 패널 */}
-          <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 1 : 3 }}>
+          <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''} ${isFlipped ? 'pos-top' : 'pos-bottom'}`} style={{ order: isFlipped ? 1 : 3 }}>
             <div className="wall-counter black-box">벽: <span className="count">{player2.wallCount}</span></div>
             {myRole === 2 ? (
               <div className="button-group">
