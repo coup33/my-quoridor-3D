@@ -1,6 +1,6 @@
-/* App.css - Final Balanced Version (Big Board, No Gap, No Scroll) */
+/* App.css - [demo_version_1] Perfect Balance (Title Margin Tweaked) */
 
-/* 1. index.css 무시하고 화면 꽉 채우기 (왼쪽 쏠림 방지) */
+/* 1. index.css 무시하고 화면 꽉 채우기 */
 #root {
   width: 100%;
   height: 100%;
@@ -179,16 +179,15 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 보드 확대 (7.4vmin) & 빈 공간 채우기
+   [demo_version_1]: Good State (7.4vmin)
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    /* ★ 수정: 6.0 -> 7.4vmin (약 23% 확대) */
-    /* 이렇게 하면 위아래 빈 공간을 보드가 자연스럽게 채웁니다 */
+    /* ★ 사용자님이 만족하셨던 그 사이즈 (Good State) */
     --cell: 7.4vmin; 
     --gap: 1vmin;
-    --pawn: 5.0vmin; /* 비율 맞춰 확대 */
-    --wall-thick: 1.2vmin; /* 비율 맞춰 확대 */
+    --pawn: 5.0vmin; 
+    --wall-thick: 1.2vmin; 
   }
 
   /* 1. 컨테이너: 중앙 정렬 */
@@ -198,12 +197,16 @@ body {
     padding-top: 0 !important;
   }
 
-  /* 2. 타이틀 */
+  /* 2. 타이틀: 아래 여백만 0으로 수정 */
   .game-title {
     position: relative;
     top: auto; left: auto; transform: none; writing-mode: horizontal-tb;
     width: 100%; text-align: center;
-    margin: 5px 0;
+    
+    /* ★ 수정: 위쪽 5px, 아래쪽 0px (다른 건 안 건드림) */
+    margin-top: 5px;
+    margin-bottom: 0px; 
+    
     font-size: 1.5rem; letter-spacing: 2px;
     z-index: 50;
   }
@@ -215,14 +218,14 @@ body {
     padding: 6px 12px; font-size: 0.8rem; z-index: 200;
   }
 
-  /* 4. 메인 콘텐츠: 스택형 배치 + 간격 축소 */
+  /* 4. 메인 콘텐츠: 스택형 배치 */
   .main-content {
     flex: 1;
     display: flex; flex-direction: column;
     justify-content: center; 
     align-items: center;
     
-    /* ★ 간격을 줄여서(10px -> 4px) 보드가 커져도 밀리지 않게 함 */
+    /* ★ 원래의 안정적인 간격 유지 */
     gap: 4px; 
     
     padding: 5px 0;
@@ -252,7 +255,7 @@ body {
   /* 타임바 */
   .time-bar-container { 
     width: 90%; max-width: 320px; 
-    margin-top: 2px; /* 간격 미세 조정 */
+    margin-top: 2px;
     margin-bottom: 2px;
     flex-shrink: 0; 
   }
