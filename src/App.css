@@ -1,10 +1,10 @@
-/* App.css - Final Polish (Increased Board Size) */
+/* App.css - Final Complete Code (Mobile Viewport Fixed) */
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  touch-action: manipulation;
+  touch-action: manipulation; /* 터치 반응 속도 개선 */
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -31,25 +31,39 @@
   .btn { padding: 8px !important; font-size: 0.9rem !important; }
 }
 
+/* ★ 핵심 1: 모바일 브라우저 튕김 방지 및 높이 고정 */
 body {
   font-family: 'Pretendard', sans-serif;
   background-color: #212529;
   color: #f8f9fa;
-  overflow: hidden;
+  
+  width: 100vw;
+  height: 100dvh; /* 동적 뷰포트 높이 사용 */
+  position: fixed; /* iOS 스크롤 튕김 방지용 */
+  overflow: hidden; 
+  overscroll-behavior: none; /* 당겨서 새로고침 방지 */
+  
+  -webkit-user-select: none;
+  user-select: none;
 }
 
+/* ★ 핵심 2: 안전 영역(노치) 대응 */
 .container {
-  width: 100vw;
-  height: 100vh; 
-  height: 100dvh; 
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  justify-content: center;
+  justify-content: center; /* PC는 중앙, 모바일은 아래 미디어쿼리에서 재설정 */
   position: relative;
+  
+  /* 아이폰 노치 및 하단 바 여백 확보 */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
-/* --- PC 전용 스타일 --- */
+/* --- [PC 전용 스타일] --- */
 .game-title {
   font-weight: 800;
   letter-spacing: 5px;
@@ -113,21 +127,25 @@ body {
 .board-section { display: flex; flex-direction: column; align-items: center; justify-content: center; width: auto; height: 100%; }
 .t-white { color: #ced4da; } .t-black { color: #868e96; }
 
-/* 타임 바 & 상단 정보 (PC) */
+/* 타임 바 컨테이너 & 상단 정보창 (PC) */
 .time-bar-container { width: 95%; max-width: 480px; margin: 8px 0; margin-top: 20px; }
 .time-info-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 5px; width: 100%; }
 .info-left { justify-self: start; } .info-center { justify-self: center; } .info-right { justify-self: end; }
+
 .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: white; white-space: nowrap; }
 .badge-spectator { background-color: #e03131; animation: pulse 2s infinite; } .badge-ingame { background-color: #228be6; }
 .badge-resign { background-color: #343a40; color: #fa5252; border: 1px solid #fa5252; cursor: pointer; transition: 0.2s; }
 .badge-resign:hover { background-color: #fa5252; color: white; }
+
 .turn-indicator-box { display: flex; align-items: center; gap: 6px; font-weight: bold; color: #ced4da; font-size: 0.9rem; }
 .turn-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 .dot-white { background-color: #f8f9fa; border: 1px solid #adb5bd; } .dot-black { background-color: #212529; border: 1px solid #868e96; }
+
 .time-bar-track { width: 100%; height: 24px; background-color: #343a40; border-radius: 12px; overflow: hidden; position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
 .time-bar-fill { height: 100%; background-color: #27ae60; width: 100%; border-radius: 12px; transition: width 0.5s linear, background-color 0.3s; }
 .time-bar-fill.warning { background-color: #fcc419; } .time-bar-fill.danger { background-color: #e03131; }
 .time-text { position: absolute; width: 100%; text-align: center; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); z-index: 2; }
+
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
 /* 보드 (PC) */
@@ -156,25 +174,24 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 보드 크기 확대 및 안정적인 스택 레이아웃 ★
+   ★ 가장 안정적인 스택형 레이아웃 (Reset Version) ★
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    /* 보드 크기 확대: 5.5vmin -> 6.4vmin */
-    --cell: 6.4vmin; 
+    /* 보드 크기: 6.0vmin으로 시원하게 */
+    --cell: 6.0vmin; 
     --gap: 1vmin;
-    /* 말 크기도 비율에 맞춰 약간 확대 */
-    --pawn: 4.5vmin; 
+    --pawn: 4.2vmin;
     --wall-thick: 1.0vmin;
   }
 
-  /* 1. 컨테이너 */
+  /* 1. 컨테이너: 다시 중앙 정렬로 복귀 (로비 깨짐 방지) */
   .container {
     justify-content: center;
     padding-top: 0;
   }
 
-  /* 2. 타이틀 */
+  /* 2. 타이틀: 일반 흐름 내 배치 (absolute 제거) */
   .game-title {
     position: relative;
     top: auto; left: auto; transform: none; writing-mode: horizontal-tb;
@@ -184,24 +201,25 @@ body {
     z-index: 50;
   }
 
-  /* 3. 메뉴 버튼 */
+  /* 3. 메뉴 버튼: 우측 상단 고정 */
   .menu-float { 
     position: absolute;
-    top: 10px; right: 15px; bottom: auto; left: auto;
+    top: 15px; right: 15px; bottom: auto; left: auto;
     padding: 6px 12px; font-size: 0.8rem; z-index: 200;
   }
 
-  /* 4. 메인 콘텐츠 (순서대로 쌓기) */
+  /* 4. 메인 콘텐츠: 위에서 아래로 차례대로 쌓기 (Flex Column) */
   .main-content {
     flex: 1;
     display: flex; flex-direction: column;
-    justify-content: center; align-items: center;
-    gap: 10px;
+    justify-content: center; /* 화면 중앙에 모음 */
+    align-items: center;
+    gap: 10px; /* 요소 간 간격 적절히 */
     padding: 10px 0;
     height: auto;
   }
 
-  /* 5. 패널 공통 */
+  /* 5. 패널 (상대/나 공통) */
   .side-panel {
     width: 90%; max-width: 320px; height: 40px;
     padding: 0 10px;
@@ -221,7 +239,7 @@ body {
   /* 타임바 & 턴 정보 */
   .time-bar-container { 
     width: 90%; max-width: 320px; 
-    margin-top: 5px;
+    margin-top: 5px; /* PC의 20px 무시 */
     margin-bottom: 5px;
     flex-shrink: 0; 
   }
