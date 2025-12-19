@@ -158,32 +158,38 @@ body {
    [📱 모바일 최적화 (가로폭 768px 이하)]
    ★ 로비 정상화 및 순차적 배치 (Standard Layout) ★
    ================================================= */
+/* App.css의 맨 아래쪽 모바일 전용 부분만 이 코드로 교체하세요 */
+
 @media (max-width: 768px) {
   :root {
-    /* 보드 크기: 작지도 크지도 않은 적당한 사이즈 */
-    --cell: 5.5vmin; 
+    /* ★ 수정: 보드 크기 대폭 확대 (5.5 -> 8.8) */
+    /* 가로폭(행동버튼)에 얼추 맞게 꽉 채움 */
+    --cell: 8.8vmin; 
+    
     --gap: 1vmin;
-    --pawn: 4.0vmin;
-    --wall-thick: 1.0vmin;
+    
+    /* 셀이 커진 만큼 말과 벽도 비율에 맞춰 키움 */
+    --pawn: 6.0vmin; 
+    --wall-thick: 1.5vmin; 
   }
 
   /* 1. 컨테이너: 중앙 정렬 (로비 복구) */
   .container {
-    justify-content: center; /* 로비 때문에 중앙 정렬 필요 */
+    justify-content: center; 
     padding-top: 0;
   }
 
-  /* 2. 타이틀: 흐름 내 배치 (absolute 제거) */
+  /* 2. 타이틀: 흐름 내 배치 */
   .game-title {
     position: relative;
     top: auto; left: auto; transform: none; writing-mode: horizontal-tb;
     width: 100%; text-align: center;
-    margin: 5px 0; /* 위아래 여백 */
+    margin: 5px 0; 
     font-size: 1.5rem; letter-spacing: 2px;
     z-index: 50;
   }
 
-  /* 3. 메뉴 버튼: 우측 상단 고정 */
+  /* 3. 메뉴 버튼 */
   .menu-float { 
     position: absolute;
     top: 10px; right: 15px; bottom: auto; left: auto;
@@ -201,7 +207,7 @@ body {
     height: auto;
   }
 
-  /* 5. 패널 공통 (상대/나 모두) */
+  /* 5. 패널 공통 */
   .side-panel {
     width: 90%; max-width: 320px; height: 40px;
     padding: 0 10px;
@@ -221,7 +227,7 @@ body {
   /* 타임바 & 턴 정보 */
   .time-bar-container { 
     width: 90%; max-width: 320px; 
-    margin-top: 5px; /* PC의 20px 무시 */
+    margin-top: 5px; 
     margin-bottom: 5px;
     flex-shrink: 0; 
   }
