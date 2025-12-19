@@ -24,7 +24,6 @@ const playSound = (name) => {
   }
 };
 
-// 타임바 컴포넌트
 const TimeBar = ({ time, maxTime = 90, left, center, right }) => {
   const percentage = Math.min(100, Math.max(0, (time / maxTime) * 100));
   let statusClass = '';
@@ -291,7 +290,6 @@ function App() {
     else if (winReason === 'resign') resultDesc = "(기권)";
   }
 
-  // ★ 중요: pos-top, pos-bottom 클래스가 정확히 적용되어야 CSS가 작동합니다.
   return (
     <div className="container">
       <div className="game-title">QUORIDOR</div>
@@ -347,7 +345,7 @@ function App() {
       <div className={`game-wrapper ${!isGameStarted ? 'blurred' : ''}`}>
         <main className="main-content">
           {/* P1 패널 */}
-          <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''} ${isFlipped ? 'pos-bottom' : 'pos-top'}`} style={{ order: isFlipped ? 3 : 1 }}>
+          <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 3 : 1 }}>
             <div className="wall-counter white-box">벽: <span className="count">{player1.wallCount}</span></div>
             {myRole === 1 ? (
               <div className="button-group">
@@ -402,7 +400,7 @@ function App() {
           </section>
 
           {/* P2 패널 */}
-          <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''} ${isFlipped ? 'pos-top' : 'pos-bottom'}`} style={{ order: isFlipped ? 1 : 3 }}>
+          <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 1 : 3 }}>
             <div className="wall-counter black-box">벽: <span className="count">{player2.wallCount}</span></div>
             {myRole === 2 ? (
               <div className="button-group">
