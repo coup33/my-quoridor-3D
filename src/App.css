@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Mobile Final Polish) */
+/* App.css - Quoridor Web Game Style (Mobile Final Layout v3) */
 
 * {
   box-sizing: border-box;
@@ -46,7 +46,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   justify-content: center;
-  position: relative;
+  position: relative; /* 중요: 타이틀/메뉴 버튼 절대 위치 기준 */
 }
 
 /* PC 타이틀 */
@@ -148,19 +148,21 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
+   ★ 사용자 요청 반영 최종 수정 ★
    ================================================= */
 @media (max-width: 768px) {
   :root {
+    /* 보드 사이즈 최적화 */
     --cell: 6.5vmin; 
     --gap: 1vmin;
     --pawn: 4.5vmin;
     --wall-thick: 1.0vmin;
   }
 
-  /* 1. 타이틀 최상단 고정 (더 위로 올림) */
+  /* 1. 타이틀을 최상단으로 올림 (간격 거의 없앰) */
   .game-title {
     position: absolute;
-    top: 5px; /* ★ 수정: 3dvh -> 5px (거의 끝까지 올림) */
+    top: 5px; /* 화면 맨 위로 바짝 붙임 */
     left: 0;
     width: 100%;
     text-align: center;
@@ -172,21 +174,22 @@ body {
     z-index: 50;
   }
 
-  /* 2. 레이아웃 구조 */
+  /* 2. 메인 콘텐츠 구조 */
   .main-content {
     flex-direction: column;
     justify-content: center;
-    gap: 10px;
+    gap: 5px;
     padding: 0;
-    padding-top: 40px; 
+    /* 상단 타이틀 공간 확보 */
+    padding-top: 35px; 
     height: 100%;
   }
 
-  /* 3. 패널 스타일: 타임 바보다 짧게 만들기 */
+  /* 3. 상하단 패널 (벽 정보) */
   .side-panel {
-    /* ★ 수정: 너비를 96% -> 85%로 줄이고, 최대 너비 제한 (타임바보다 작게) */
-    width: 85%;
-    max-width: 330px; 
+    /* ★ 너비를 70%로 줄여서 타임바보다 짧게 만듦 */
+    width: 70%;
+    max-width: 300px;
     height: 40px;
     padding: 0 15px;
     display: flex;
@@ -197,14 +200,27 @@ body {
     flex-shrink: 0;
   }
 
-  .board-section {
-    height: auto;
-    margin: 5px 0;
+  /* 4. 메뉴 버튼을 우측 상단으로 이동 (타이틀 옆) */
+  .menu-float { 
+    position: absolute;
+    top: 5px; /* 타이틀과 같은 높이 */
+    right: 15px;
+    bottom: auto;
+    left: auto;
+    padding: 6px 12px; 
+    font-size: 0.75rem; 
+    z-index: 100;
   }
 
-  /* 하단 패널 여백 */
+  /* 5. 보드 섹션 여백 최소화 */
+  .board-section {
+    height: auto;
+    margin: 3px 0;
+  }
+
+  /* 6. 하단 패널이 잘리지 않도록 마진 확보 */
   .side-panel:last-child {
-    margin-bottom: 60px; 
+    margin-bottom: 20px; /* 적당한 하단 여백 */
   }
 
   .wall-counter { margin: 0; padding: 0; background: transparent; font-size: 0.9rem; white-space: nowrap; }
@@ -213,10 +229,9 @@ body {
   .button-group { flex-direction: row; gap: 8px; flex-wrap: nowrap; }
   .btn { padding: 5px 12px; font-size: 0.8rem; height: 30px; min-width: 50px; }
 
+  /* 타임바 여백 */
   .time-bar-wrapper { margin-top: 30px; margin-bottom: 5px; }
   .status-badge { font-size: 0.7rem; padding: 2px 8px; top: -25px; }
-
-  .menu-float { bottom: 15px; left: 15px; padding: 8px 15px; font-size: 0.85rem; }
 }
 
 /* 로비 & 모달 (변경 없음) */
@@ -233,8 +248,11 @@ body {
 .role-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .start-btn { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 .cancel-btn { width: 100%; margin-top: 10px; padding: 10px; background: #868e96; color: white; border: none; border-radius: 8px; cursor: pointer; }
+
+/* 메뉴 플로팅 버튼 (PC용 - 모바일은 미디어 쿼리에서 덮어씀) */
 .menu-float { position: fixed; bottom: 20px; left: 20px; padding: 10px 20px; background-color: #343a40; color: white; border: 1px solid #495057; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 500; }
 .menu-float:hover { background-color: #495057; }
+
 .menu-title { margin-bottom: 20px; font-size: 1.5rem; font-weight: bold; color: #333; }
 .menu-btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 1rem; }
 .btn-exit { background-color: #e03131; color: white; }
