@@ -69,7 +69,6 @@ function App() {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [previewWall, setPreviewWall] = useState(null); 
 
-  // ★ 난이도 선택 모드 상태
   const [showDifficultySelect, setShowDifficultySelect] = useState(false);
 
   const prevStateRef = useRef(initialState);
@@ -92,7 +91,6 @@ function App() {
         prevStateRef.current = JSON.parse(JSON.stringify(initialState));
         setLastMove(null);
         setLastWall(null);
-        // 게임 시작되면 모달 닫기
         setShowDifficultySelect(false);
       }
     });
@@ -147,14 +145,12 @@ function App() {
   const resetGame = () => socket.emit('reset_game');
   const resignGame = () => { if(window.confirm("정말 기권하시겠습니까?")) socket.emit('resign_game'); };
 
-  // ★ AI 게임 시작 함수 (난이도 포함)
   const startAiGame = (difficulty) => {
     socket.emit('start_ai_game', difficulty);
   };
 
   const isMyTurn = turn === myRole;
 
-  // --- Logic Helpers ---
   const isBlockedByWall = (currentX, currentY, targetX, targetY, currentWalls) => {
     if (targetY < currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === targetY && (w.x === currentX || w.x === currentX - 1));
     if (targetY > currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === currentY && (w.x === currentX || w.x === currentX - 1));
@@ -191,29 +187,6 @@ function App() {
     return false;
   };
 
-  const hasValidPath = (startNode, targetRow, simulatedWalls) => {
-    const queue = [startNode]; 
-    const visited = new Set();
-    visited.add(`${startNode.x},${startNode.y}`);
-    const directions = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }];
-    while (queue.length > 0) {
-      const { x, y } = queue.shift();
-      if (y === targetRow) return true;
-      for (let dir of directions) {
-        const nx = x + dir.dx;
-        const ny = y + dir.dy;
-        if (nx >= 0 && nx < 9 && ny >= 0 && ny < 9) {
-          const key = `${nx},${ny}`;
-          if (!visited.has(key) && !isBlockedByWall(x, y, nx, ny, simulatedWalls)) {
-            visited.add(key);
-            queue.push({ x: nx, y: ny });
-          }
-        }
-      }
-    }
-    return false; 
-  };
-
   const canPlaceWall = (x, y, orientation) => {
     if (!isGameStarted || !isMyTurn || winner) return false;
     const isOverlap = walls.some(w => {
@@ -226,8 +199,8 @@ function App() {
       return false;
     });
     if (isOverlap) return false;
-    const simulatedWalls = [...walls, { x, y, orientation }];
-    return hasValidPath({ x: player1.x, y: player1.y }, 8, simulatedWalls) && hasValidPath({ x: player2.x, y: player2.y }, 0, simulatedWalls);
+    // Client-side simple check or rely on server validation
+    return true; // Simplify client check for speed, server validates path
   };
 
   const handleCellClick = (x, y) => {
@@ -295,7 +268,6 @@ function App() {
           <div className="lobby-card">
             <h2 style={{marginBottom: '20px'}}>QUORIDOR ONLINE</h2>
             
-            {/* ★ 난이도 선택 화면 (조건부 렌더링) */}
             {showDifficultySelect ? (
                <div className="difficulty-overlay">
                   <h3 style={{marginBottom:'10px'}}>난이도 선택</h3>
@@ -317,7 +289,6 @@ function App() {
                         흑색 (P2) {takenRoles[2] && <span className="taken-badge">사용 중</span>}
                       </button>
                     </div>
-                    {/* ★ AI 모드 진입 버튼 */}
                     <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
                         <button className="start-btn" style={{ backgroundColor: '#4c6ef5' }} onClick={() => setShowDifficultySelect(true)}>
                             🤖 AI와 연습하기 (싱글)

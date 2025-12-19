@@ -36,8 +36,6 @@ let isGameStarted = false;
 let gameInterval = null;
 
 // --- 🧠 AI Helper Functions ---
-
-// 벽 충돌 체크
 const isBlocked = (cx, cy, tx, ty, walls) => {
   if (ty < cy) return walls.some(w => w.orientation === 'h' && w.y === ty && (w.x === cx || w.x === cx - 1));
   if (ty > cy) return walls.some(w => w.orientation === 'h' && w.y === cy && (w.x === cx || w.x === cx - 1));
@@ -46,8 +44,6 @@ const isBlocked = (cx, cy, tx, ty, walls) => {
   return false;
 };
 
-// BFS: 최단 경로와 거리 계산
-// return: { distance: number, nextStep: {x,y}, path: [{x,y}...] }
 const getPathData = (startNode, targetRow, currentWalls) => {
   const queue = [{ x: startNode.x, y: startNode.y, dist: 0, parent: null }];
   const visited = new Set();
@@ -57,7 +53,6 @@ const getPathData = (startNode, targetRow, currentWalls) => {
   while (queue.length > 0) {
     const current = queue.shift();
     if (current.y === targetRow) {
-      // 경로 역추적
       let path = [];
       let temp = current;
       while (temp) {
@@ -82,12 +77,10 @@ const getPathData = (startNode, targetRow, currentWalls) => {
       }
     }
   }
-  return null; // 길 없음
+  return null;
 };
 
-// 벽 유효성 검사 (겹침 + 길 막힘)
 const isValidWall = (x, y, orientation, currentWalls, p1Pos, p2Pos) => {
-  // 1. 겹침 체크
   const isOverlap = currentWalls.some(w => {
     if (w.x === x && w.y === y && w.orientation === orientation) return true;
     if (w.orientation === orientation) {
@@ -99,7 +92,6 @@ const isValidWall = (x, y, orientation, currentWalls, p1Pos, p2Pos) => {
   });
   if (isOverlap) return false;
 
-  // 2. 길 막힘 체크
   const simulatedWalls = [...currentWalls, { x, y, orientation }];
   const p1Path = getPathData(p1Pos, 8, simulatedWalls);
   const p2Path = getPathData(p2Pos, 0, simulatedWalls);
@@ -117,29 +109,19 @@ const processAIMove = () => {
     const walls = gameState.walls;
     const difficulty = gameState.aiDifficulty;
 
-    let moveAction = null; // { type: 'move', x, y }
-    let wallAction = null; // { type: 'wall', x, y, orientation }
+    let moveAction = null;
+    let wallAction = null;
 
-    // 기본적으로 최단 경로 계산
     const myPathData = getPathData(p2Pos, 0, walls);
     const oppPathData = getPathData(p1Pos, 8, walls);
 
-    // AI 레벨별 로직 분기
-    // ----------------------------------------------------
-    
-    // Level 1: 매우 쉬움 (무조건 이동만 함)
-    if (difficulty === 1) {
-       if (myPathData && myPathData.nextStep) {
-         moveAction = myPathData.nextStep;
-       }
+    if (difficulty === 1) { // 매우 쉬움
+       if (myPathData && myPathData.nextStep) moveAction = myPathData.nextStep;
     }
-
-    // Level 2: 쉬움 (80% 이동, 20% 랜덤 벽 설치)
-    else if (difficulty === 2) {
+    else if (difficulty === 2) { // 쉬움
       const randomAction = Math.random();
       if (randomAction > 0.8 && gameState.p2.wallCount > 0) {
-         // 랜덤한 위치에 벽 시도
-         for(let i=0; i<10; i++) { // 10번 시도
+         for(let i=0; i<10; i++) {
             const rx = Math.floor(Math.random() * 8);
             const ry = Math.floor(Math.random() * 8);
             const rOr = Math.random() > 0.5 ? 'h' : 'v';
@@ -149,25 +131,17 @@ const processAIMove = () => {
             }
          }
       }
-      // 벽 못 놓거나 확률 아니면 이동
-      if (!wallAction && myPathData && myPathData.nextStep) {
-          moveAction = myPathData.nextStep;
-      }
+      if (!wallAction && myPathData && myPathData.nextStep) moveAction = myPathData.nextStep;
     }
-
-    // Level 3: 보통 (상대가 3칸 내로 오면 방어, 아니면 이동)
-    else if (difficulty === 3) {
+    else if (difficulty === 3) { // 보통
       if (oppPathData && oppPathData.distance <= 3 && gameState.p2.wallCount > 0) {
-         // 상대방 경로의 바로 앞을 막으려 시도
-         const targetNode = oppPathData.fullPath[1] || oppPathData.fullPath[0]; // 상대의 다음 스텝
-         // 간단히 상대 앞에 가로/세로 벽 시도
+         const targetNode = oppPathData.fullPath[1] || oppPathData.fullPath[0];
          const tryWalls = [
             { x: targetNode.x, y: targetNode.y, o: 'h' },
             { x: targetNode.x - 1, y: targetNode.y, o: 'h' },
             { x: targetNode.x, y: targetNode.y, o: 'v' },
             { x: targetNode.x, y: targetNode.y - 1, o: 'v' }
          ];
-         
          for (let w of tryWalls) {
             if (w.x>=0 && w.x<8 && w.y>=0 && w.y<8) {
                 if (isValidWall(w.x, w.y, w.o, walls, p1Pos, p2Pos)) {
@@ -177,46 +151,33 @@ const processAIMove = () => {
             }
          }
       }
-
-      if (!wallAction && myPathData && myPathData.nextStep) {
-          moveAction = myPathData.nextStep;
-      }
+      if (!wallAction && myPathData && myPathData.nextStep) moveAction = myPathData.nextStep;
     }
-
-    // Level 4: 어려움 (내가 불리하면 상대방의 최단 경로를 방해, 아니면 최단 이동)
-    else if (difficulty === 4) {
+    else if (difficulty === 4) { // 어려움
       const myDist = myPathData ? myPathData.distance : 999;
       const oppDist = oppPathData ? oppPathData.distance : 999;
 
-      // 내가 불리하거나(거리가 더 멀거나), 비슷할 때 벽으로 견제
       if (myDist >= oppDist - 1 && gameState.p2.wallCount > 0) {
-         // 상대방의 최단 경로 상의 좌표들을 순회하며 가장 괴로울 위치 찾기
          let bestWall = null;
          let maxDiff = -Infinity;
-
-         // 상대 경로의 앞쪽 3스텝 정도를 집중 공략
          const checkNodes = oppPathData.fullPath.slice(0, 4);
          
          for (let node of checkNodes) {
-             // 해당 노드 주변에 벽을 놓아보고, 상대 거리가 얼마나 늘어나는지 시뮬레이션
              const candidates = [
                 { x: node.x, y: node.y, o: 'h' }, { x: node.x -1, y: node.y, o: 'h' },
                 { x: node.x, y: node.y, o: 'v' }, { x: node.x, y: node.y -1, o: 'v' },
-                { x: node.x, y: node.y -1, o: 'h' } // 약간 변칙
+                { x: node.x, y: node.y -1, o: 'h' }
              ];
-
              for (let cand of candidates) {
                  if (cand.x < 0 || cand.x > 7 || cand.y < 0 || cand.y > 7) continue;
                  if (isValidWall(cand.x, cand.y, cand.o, walls, p1Pos, p2Pos)) {
-                     // 시뮬레이션
                      const simWalls = [...walls, {x:cand.x, y:cand.y, orientation:cand.o}];
                      const simOppData = getPathData(p1Pos, 8, simWalls);
                      const simMyData = getPathData(p2Pos, 0, simWalls);
                      
                      if (simOppData && simMyData) {
-                         // (상대 거리 증가분) - (내 거리 증가분) 이 클수록 좋음
                          const score = (simOppData.distance - oppDist) - (simMyData.distance - myDist);
-                         if (score > maxDiff && score > 0) { // 최소한 상대를 방해해야 함
+                         if (score > maxDiff && score > 0) {
                              maxDiff = score;
                              bestWall = { x: cand.x, y: cand.y, orientation: cand.o };
                          }
@@ -224,40 +185,25 @@ const processAIMove = () => {
                  }
              }
          }
-         
-         if (bestWall && maxDiff > 0) {
-             wallAction = bestWall;
-         }
+         if (bestWall && maxDiff > 0) wallAction = bestWall;
       }
-
-      if (!wallAction && myPathData && myPathData.nextStep) {
-          moveAction = myPathData.nextStep;
-      }
+      if (!wallAction && myPathData && myPathData.nextStep) moveAction = myPathData.nextStep;
     }
     
-    // Fallback: 결정된 게 없으면 그냥 이동
-    if (!moveAction && !wallAction && myPathData && myPathData.nextStep) {
-        moveAction = myPathData.nextStep;
-    }
+    if (!moveAction && !wallAction && myPathData && myPathData.nextStep) moveAction = myPathData.nextStep;
 
-    // ----------------------------------------------------
-
-    // 최종 실행
     let newState = { ...gameState };
     
     if (wallAction) {
         newState.walls.push(wallAction);
         newState.p2.wallCount -= 1;
         newState.lastWall = wallAction;
-        newState.lastMove = null; // 벽 놓으면 이동 잔상 제거? 취향차이.
+        newState.lastMove = null;
     } else if (moveAction) {
         newState.lastMove = { player: 2, x: gameState.p2.x, y: gameState.p2.y };
         newState.lastWall = null;
         newState.p2 = { ...gameState.p2, x: moveAction.x, y: moveAction.y };
         if (newState.p2.y === 0) newState.winner = 2;
-    } else {
-        // 아무것도 못하는 상황 (갇힘? 버그?) -> 턴 넘김
-        console.log("AI Stuck or Bug");
     }
 
     newState.turn = 1;
@@ -266,10 +212,9 @@ const processAIMove = () => {
     gameState = newState;
     io.emit('update_state', gameState);
 
-  }, 1000); // 1초 생각
+  }, 1000);
 };
 
-// --- Socket Handlers ---
 const broadcastLobby = () => io.emit('lobby_update', { roles, readyStatus, isGameStarted });
 
 const startGameTimer = () => {
@@ -319,14 +264,13 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ★ AI 게임 시작 핸들러 (난이도 포함)
   socket.on('start_ai_game', (difficulty) => {
     roles = { 1: socket.id, 2: 'AI' };
     readyStatus = { 1: true, 2: true };
     isGameStarted = true;
     gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
     gameState.isVsAI = true;
-    gameState.aiDifficulty = difficulty; // 난이도 설정
+    gameState.aiDifficulty = difficulty; 
 
     io.emit('lobby_update', { roles, readyStatus, isGameStarted });
     io.emit('game_start', true);
@@ -338,7 +282,6 @@ io.on('connection', (socket) => {
     if (roles[1] !== socket.id && roles[2] !== socket.id) return;
     if (gameState.winner) return;
 
-    // 잔상 & 마지막 벽 기록
     let newLastMove = gameState.lastMove;
     let newLastWall = null;
     if (gameState.p1.x !== newState.p1.x || gameState.p1.y !== newState.p1.y) {
@@ -357,7 +300,6 @@ io.on('connection', (socket) => {
 
     io.emit('update_state', gameState);
 
-    // ★ AI 턴 트리거
     if (gameState.isVsAI && gameState.turn === 2 && !gameState.winner) {
         processAIMove();
     }

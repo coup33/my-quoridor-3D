@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Final Version) */
+/* App.css - Quoridor Web Game Style (Final Fixed) */
 
 * {
   box-sizing: border-box;
@@ -201,12 +201,12 @@ body {
   z-index: 2;
 }
 
-/* --- 항복 버튼 영역 (보드 하단 우측 정렬) --- */
+/* --- 항복 버튼 영역 --- */
 .controls-row {
   width: 95%;
   max-width: 480px;
   display: flex;
-  justify-content: flex-end; /* 우측 정렬 */
+  justify-content: flex-end; 
   margin-top: 5px;
 }
 
@@ -248,7 +248,7 @@ body {
   grid-template-columns: repeat(9, var(--cell));
   grid-template-rows: repeat(9, var(--cell));
   gap: var(--gap);
-  transition: transform 0.5s ease; /* 회전 애니메이션 */
+  transition: transform 0.5s ease; 
 }
 
 .cell {
@@ -265,7 +265,7 @@ body {
 .black-pawn { background: #212529; border: 2px solid #868e96; }
 .move-dot { width: 25%; height: 25%; background: rgba(0,0,0,0.3); border-radius: 50%; }
 
-/* --- 👻 과거 이동 잔상 (Ghost Pawn) --- */
+/* --- 👻 잔상 (Ghost Pawn) --- */
 .ghost-pawn {
   width: var(--pawn);
   height: var(--pawn);
@@ -298,7 +298,7 @@ body {
   pointer-events: none;
 }
 
-/* --- ✨ 최신 설치된 벽 하이라이트 --- */
+/* --- ✨ 최신 벽 하이라이트 --- */
 .placed-wall.latest {
   background: #ffec99 !important; 
   box-shadow: 0 0 10px #fcc419, 0 2px 4px rgba(0,0,0,0.5); 
@@ -314,14 +314,13 @@ body {
 /* 📱 모바일 최적화 */
 @media (max-width: 768px) {
   :root {
-    /* vmin 사용: 화면 절대 안 넘어가게 */
+    /* vmin 사용 */
     --cell: 8.5vmin; 
     --gap: 1vmin;
     --pawn: 6vmin;
     --wall-thick: 1.5vmin;
   }
 
-  /* 1. 타이틀 변경: 상단 가로 목록형 */
   .game-title {
     position: static;
     transform: none;
@@ -341,7 +340,6 @@ body {
     padding: 5px 0;
   }
 
-  /* 패널 스타일 */
   .side-panel {
     width: 90%;
     padding: 5px 15px;
@@ -360,16 +358,14 @@ body {
   .button-group { flex-direction: row; gap: 5px; }
   .btn { padding: 5px 10px; font-size: 0.8rem; height: 34px;}
 
-  /* 헤더 숨김 */
   .header { display: none; }
-  
   .reset-float { bottom: 10px; right: 10px; padding: 8px 12px; font-size: 0.8rem; }
 }
 
 /* --- 로비 및 팝업 스타일 --- */
 .lobby-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; }
 
-/* ★ [수정] position: relative + overflow: hidden (난이도창이 안에 갇히도록) */
+/* ★ [수정] 높이 제한 문제 해결 */
 .lobby-card { 
   background: white; 
   color: #333; 
@@ -380,19 +376,23 @@ body {
   text-align: center;
   position: relative; 
   overflow: hidden; 
+  /* max-height 제거 및 내용물에 따라 늘어나게 둠 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-/* --- 🤖 AI 난이도 선택 모달 --- */
+/* --- 🤖 AI 난이도 선택 모달 (absolute 제거) --- */
 .difficulty-overlay {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
+  /* position: absolute 제거하여 부모 크기를 늘리도록 함 */
+  width: 100%; 
+  height: auto;
   background: white; 
-  padding: 20px;
+  padding: 10px 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 10px;
-  z-index: 10;
 }
 
 .diff-btn {
@@ -419,7 +419,7 @@ body {
   margin-top: 5px;
 }
 
-/* ★ [수정] 로비 버튼 색상 강제 지정 (모바일 이슈 해결) */
+/* 로비 버튼 색상 강제 지정 */
 .role-btn { 
   width: 100%; 
   padding: 15px; 
@@ -433,24 +433,19 @@ body {
   -webkit-appearance: none;
 }
 
-/* 백색 버튼: 흰 배경, 검은 글씨 */
 .role-btn.white {
   background-color: #ffffff;
   color: #212529;
   border: 2px solid #dee2e6;
 }
 
-/* 흑색 버튼: 검은 배경, 흰 글씨 */
 .role-btn.black {
   background-color: #343a40;
   color: #ffffff;
   border: 2px solid #343a40;
 }
 
-.role-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.role-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .start-btn { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 .cancel-btn { width: 100%; margin-top: 10px; padding: 10px; background: #868e96; color: white; border: none; border-radius: 8px; cursor: pointer; }
