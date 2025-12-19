@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Flex Order Fix) */
+/* App.css - Quoridor Web Game Style (Safe Flex Layout) */
 
 * {
   box-sizing: border-box;
@@ -152,11 +152,11 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 최종 수정: absolute 제거하고 Flex Order 존중 ★
+   ★ 안전한 Flex Column 정렬 (absolute 제거) ★
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    /* 보드 크기: 적절히 축소 */
+    /* 보드 크기: 6.0vmin (적당한 크기 유지) */
     --cell: 6.0vmin; 
     --gap: 1vmin;
     --pawn: 4.2vmin;
@@ -169,25 +169,28 @@ body {
     padding-top: 0;
   }
 
-  /* 2. 타이틀: 최상단 고정 (absolute) */
+  /* 2. 타이틀: 고정 높이, 흐름 내 배치 */
   .game-title {
-    position: absolute;
-    top: 5px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: auto;
-    writing-mode: horizontal-tb;
+    position: relative; 
+    width: 100%;
+    height: 50px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin: 0;
-    font-size: 1.3rem;
+    
+    top: auto; left: auto; transform: none; writing-mode: horizontal-tb;
+    order: -2; /* 가장 위 */
+    font-size: 1.5rem;
     letter-spacing: 2px;
-    z-index: 100;
-    white-space: nowrap;
+    z-index: 50;
+    flex-shrink: 0;
   }
 
-  /* 3. 메뉴 버튼: 우측 상단 고정 (absolute) */
+  /* 3. 메뉴 버튼: 우측 상단 고정 (타이틀 옆) */
   .menu-float { 
     position: absolute;
-    top: 10px;
+    top: 12px;
     right: 15px;
     bottom: auto; left: auto;
     padding: 6px 12px; 
@@ -195,70 +198,68 @@ body {
     z-index: 200;
   }
 
-  /* 4. 메인 콘텐츠: 비율 분배 (space-between) 
-     - 여기서 순서를 결정함 (App.jsx의 style={{order: ...}}를 따름)
-  */
+  /* 4. 메인 콘텐츠: 세로 쌓기 */
   .main-content {
-    flex: 1;
+    flex: 1; /* 남은 높이 차지 */
     display: flex;
     flex-direction: column;
-    /* 상단(타이틀), 하단 여백 확보 후 내부 요소 균등 배치 */
-    padding: 50px 0 20px 0; 
-    justify-content: space-between; 
+    /* 위아래 공간을 균등 배분하여 요소들이 찌그러지지 않게 함 */
+    justify-content: space-evenly; 
     align-items: center;
     gap: 0;
+    padding: 0 0 20px 0; /* 하단 버튼 잘림 방지 */
     height: 100%;
   }
 
-  /* 5. 패널 공통 스타일 (위/아래 구분 없이 공통 적용) 
-     - position: absolute를 제거하여 Flex Order를 따르게 함
-  */
+  /* 5. 패널 공통 스타일 (상/하단 모두 적용) */
+  /* ★ 중요: absolute를 뺐습니다. 이제 React 순서(order)대로 위/아래에 배치됩니다. */
   .side-panel {
-    position: relative; /* absolute 금지! */
+    position: relative; /* absolute 금지 */
     width: 90%;
     max-width: 350px;
-    height: 40px;
+    height: 45px; /* 고정 높이 */
     padding: 0 10px;
-    margin: 0 auto; /* 중앙 정렬 */
+    margin: 0 auto; /* 가로 중앙 */
     
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
     
-    flex-shrink: 0; /* 찌그러짐 방지 */
+    /* ★ 핵심: 절대 줄어들거나 사라지지 않음 */
+    flex-shrink: 0; 
     white-space: nowrap;
   }
 
-  /* 6. 텍스트 줄바꿈 방지 */
-  .wall-counter { 
-    margin: 0; padding: 0; background: transparent; 
-    font-size: 0.9rem; white-space: nowrap; 
-  }
+  /* 6. 텍스트 및 버튼 */
+  .wall-counter { margin: 0; padding: 0; background: transparent; font-size: 0.9rem; }
   .count { display: inline; font-size: 1.1rem; margin-left: 5px; }
-
-  /* 7. 버튼 그룹 */
+  
   .button-group { 
-    display: flex; flex-direction: row; gap: 5px; 
+    display: flex; flex-direction: row; gap: 8px; 
     flex-wrap: nowrap; flex-shrink: 0; 
   }
   .btn { 
-    padding: 0 10px; font-size: 0.8rem; height: 28px; 
-    min-width: 50px; display: flex; align-items: center; justify-content: center;
+    padding: 0 12px; font-size: 0.8rem; height: 32px; 
+    min-width: 55px; display: flex; align-items: center; justify-content: center;
   }
 
-  /* 8. 보드 섹션 */
+  /* 7. 보드 섹션 */
   .board-section {
-    flex-shrink: 0;
-    margin: 0;
+    /* 공간이 부족하면 보드가 먼저 줄어들게 설정 */
+    flex: 0 1 auto; 
+    margin: 5px 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    /* 너무 커지는 것 방지 */
+    max-height: 55vh;
   }
 
+  /* 타임바 */
   .turn-display { margin-bottom: 2px; font-size: 0.9rem; flex-shrink: 0; }
-  .time-bar-wrapper { margin-top: 25px; margin-bottom: 5px; width: 85%; max-width: 300px; flex-shrink: 0; }
+  .time-bar-wrapper { margin-top: 25px; margin-bottom: 5px; width: 90%; max-width: 320px; flex-shrink: 0; }
   .status-badge { font-size: 0.65rem; padding: 2px 6px; top: -23px; }
 }
 
