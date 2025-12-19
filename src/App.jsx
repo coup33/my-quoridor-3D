@@ -24,7 +24,6 @@ const playSound = (name) => {
   }
 };
 
-// 타임바 컴포넌트 (배지, 턴, 항복버튼 포함)
 const TimeBar = ({ time, maxTime = 90, left, center, right }) => {
   const percentage = Math.min(100, Math.max(0, (time / maxTime) * 100));
   let statusClass = '';
@@ -245,7 +244,7 @@ function App() {
   };
 
   const isSpectator = isGameStarted && myRole !== 1 && myRole !== 2;
-  const isFlipped = myRole === 1; // 내가 P1이면 화면 뒤집힘 (P1이 아래쪽)
+  const isFlipped = myRole === 1; 
   const topTime = isFlipped ? p2Time : p1Time;
   const bottomTime = isFlipped ? p1Time : p2Time;
 
@@ -267,7 +266,6 @@ function App() {
     );
   }
 
-  // 턴 표시 로직
   let turnIndicator = null;
   if (winner) {
     let resultTitle = "";
@@ -292,6 +290,7 @@ function App() {
     else if (winReason === 'resign') resultDesc = "(기권)";
   }
 
+  // ★ 중요: isFlipped(내가 P1) 여부에 따라 pos-top, pos-bottom 클래스를 동적으로 붙임
   return (
     <div className="container">
       <div className="game-title">QUORIDOR</div>
@@ -346,7 +345,7 @@ function App() {
 
       <div className={`game-wrapper ${!isGameStarted ? 'blurred' : ''}`}>
         <main className="main-content">
-          {/* ★ [수정됨] P1 패널: isFlipped면 아래쪽(pos-bottom), 아니면 위쪽(pos-top) */}
+          {/* P1 패널: isFlipped면 내꺼(아래), 아니면 상대꺼(위) */}
           <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''} ${isFlipped ? 'pos-bottom' : 'pos-top'}`} style={{ order: isFlipped ? 3 : 1 }}>
             <div className="wall-counter white-box">벽: <span className="count">{player1.wallCount}</span></div>
             {myRole === 1 ? (
@@ -401,7 +400,7 @@ function App() {
             <TimeBar time={bottomTime} />
           </section>
 
-          {/* ★ [수정됨] P2 패널: isFlipped면 위쪽(pos-top), 아니면 아래쪽(pos-bottom) */}
+          {/* P2 패널: isFlipped면 상대꺼(위), 아니면 내꺼(아래) */}
           <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''} ${isFlipped ? 'pos-top' : 'pos-bottom'}`} style={{ order: isFlipped ? 1 : 3 }}>
             <div className="wall-counter black-box">벽: <span className="count">{player2.wallCount}</span></div>
             {myRole === 2 ? (

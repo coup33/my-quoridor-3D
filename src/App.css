@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Grouped Center Layout) */
+/* App.css - Quoridor Web Game Style (Grouped Center + Fixed Bottom Anchor) */
 
 * {
   box-sizing: border-box;
@@ -184,6 +184,7 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
+   ★ 전략: [상대패널+보드] 중앙 그룹핑 & [내 패널] 바닥 고정
    ================================================= */
 @media (max-width: 768px) {
   :root {
@@ -202,7 +203,7 @@ body {
   /* 2. [상단 고정] 타이틀 */
   .game-title {
     position: absolute; 
-    top: 2px; 
+    top: 5px; 
     left: 50%;
     transform: translateX(-50%);
     width: auto;
@@ -217,7 +218,7 @@ body {
   /* 3. [상단 고정] 메뉴 버튼 */
   .menu-float { 
     position: absolute;
-    top: 5px; 
+    top: 8px; 
     right: 15px;
     bottom: auto; left: auto;
     padding: 6px 12px; 
@@ -225,10 +226,10 @@ body {
     z-index: 200;
   }
 
-  /* 4. [하단 고정] 행동 버튼 뭉치 (내 패널) */
+  /* 4. [하단 고정] 행동 버튼 (내 패널) */
   .side-panel.pos-bottom {
     position: absolute;
-    bottom: 60px; /* 터치 편의를 위해 띄움 */
+    bottom: 60px; /* 바닥에서 충분히 띄움 */
     left: 50%;
     transform: translateX(-50%);
     
@@ -248,7 +249,7 @@ body {
     box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
   }
 
-  /* 5. [중앙 영역] 메인 콘텐츠: 중앙 밀집 대형 */
+  /* 5. [중앙 영역] 메인 콘텐츠: 중앙 밀집 */
   .main-content {
     flex: 1;
     display: flex;
@@ -258,17 +259,16 @@ body {
     padding-top: 50px; 
     padding-bottom: 160px; 
     
-    /* ★ 핵심: justify-content: center로 요소들을 중앙에 뭉침 */
+    /* ★ 중앙 정렬로 [상대패널+보드]를 모음 */
     justify-content: center; 
     align-items: center;
-    
-    /* ★ 핵심: 상대 패널과 보드 사이 간격을 15px로 좁혀서 붙어있게 함 */
-    gap: 15px; 
+    gap: 15px; /* 상대 패널과 보드 사이 간격 */
     height: 100%;
   }
 
-  /* 6. [상단 패널] 상대방 정보 */
+  /* 6. [상대 패널] main-content 흐름 안에 포함 */
   .side-panel.pos-top {
+    position: relative; /* absolute 아님 */
     width: 75%;
     max-width: 280px;
     height: 38px;
@@ -278,9 +278,9 @@ body {
     justify-content: space-between;
     align-items: center;
     margin: 0 auto;
+    
     flex-shrink: 0;
     white-space: nowrap;
-    /* justify-content: center 효과로 보드와 가까워짐 */
   }
 
   /* 7. 보드 섹션 */
