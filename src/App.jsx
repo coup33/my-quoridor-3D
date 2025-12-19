@@ -47,9 +47,8 @@ function App() {
     winner: null,
     p1Time: 60,
     p2Time: 60,
-    // ★ 추가된 상태
-    lastMove: null, // { player: 1, x: 4, y: 0 }
-    lastWall: null  // { x, y, orientation }
+    lastMove: null, 
+    lastWall: null
   };
 
   const [player1, setPlayer1] = useState(initialState.p1);
@@ -60,7 +59,6 @@ function App() {
   const [p1Time, setP1Time] = useState(initialState.p1Time);
   const [p2Time, setP2Time] = useState(initialState.p2Time);
   
-  // ★ 시각적 효과를 위한 state 추가
   const [lastMove, setLastMove] = useState(null);
   const [lastWall, setLastWall] = useState(null);
   
@@ -70,6 +68,9 @@ function App() {
   const [readyStatus, setReadyStatus] = useState({ 1: false, 2: false });
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [previewWall, setPreviewWall] = useState(null); 
+
+  // ★ 난이도 선택 모드 상태
+  const [showDifficultySelect, setShowDifficultySelect] = useState(false);
 
   const prevStateRef = useRef(initialState);
 
@@ -89,9 +90,10 @@ function App() {
       if (started) {
         playSound('start');
         prevStateRef.current = JSON.parse(JSON.stringify(initialState));
-        // 게임 시작 시 잔상 초기화
         setLastMove(null);
         setLastWall(null);
+        // 게임 시작되면 모달 닫기
+        setShowDifficultySelect(false);
       }
     });
 
@@ -108,36 +110,26 @@ function App() {
 
   const syncWithServer = (state) => {
     if (!state) return;
-
     const prev = prevStateRef.current;
     
-    // [사운드 로직]
     if (prev.p1.x !== state.p1.x || prev.p1.y !== state.p1.y || 
-        prev.p2.x !== state.p2.x || prev.p2.y !== state.p2.y) {
-      playSound('move');
-    }
+        prev.p2.x !== state.p2.x || prev.p2.y !== state.p2.y) playSound('move');
 
-    if ((state.walls || []).length > (prev.walls || []).length) {
-      playSound('wall');
-    }
+    if ((state.walls || []).length > (prev.walls || []).length) playSound('wall');
 
     if (state.winner && !prev.winner) {
       if (myRole === 1 || myRole === 2) {
         if (state.winner === myRole) playSound('win');
         else playSound('lose');
-      } else {
-        playSound('win');
-      }
+      } else playSound('win');
     }
 
-    // 턴 변경 시 UI 초기화
     if (prev.turn !== state.turn) {
       setPreviewWall(null);
       setActionMode(null);
     }
 
     prevStateRef.current = state;
-
     setPlayer1(state.p1);
     setPlayer2(state.p2);
     setTurn(state.turn);
@@ -145,29 +137,24 @@ function App() {
     setWinner(state.winner);
     setP1Time(state.p1Time);
     setP2Time(state.p2Time);
-    
-    // ★ 잔상 및 벽 하이라이트 정보 동기화
     setLastMove(state.lastMove);
     setLastWall(state.lastWall);
   };
 
-  const emitAction = (newState) => {
-    socket.emit('game_action', newState);
-  };
-
+  const emitAction = (newState) => socket.emit('game_action', newState);
   const selectRole = (role) => socket.emit('select_role', role);
   const toggleReady = () => myRole && socket.emit('player_ready', myRole);
   const resetGame = () => socket.emit('reset_game');
-  
-  const resignGame = () => {
-    if(window.confirm("정말 기권하시겠습니까?")) {
-        socket.emit('resign_game');
-    }
+  const resignGame = () => { if(window.confirm("정말 기권하시겠습니까?")) socket.emit('resign_game'); };
+
+  // ★ AI 게임 시작 함수 (난이도 포함)
+  const startAiGame = (difficulty) => {
+    socket.emit('start_ai_game', difficulty);
   };
 
   const isMyTurn = turn === myRole;
 
-  // --- 로직 함수들 ---
+  // --- Logic Helpers ---
   const isBlockedByWall = (currentX, currentY, targetX, targetY, currentWalls) => {
     if (targetY < currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === targetY && (w.x === currentX || w.x === currentX - 1));
     if (targetY > currentY) return currentWalls.some(w => w.orientation === 'h' && w.y === currentY && (w.x === currentX || w.x === currentX - 1));
@@ -195,15 +182,10 @@ function App() {
       const dy = opponent.y - current.y;
       const jumpX = opponent.x + dx;
       const jumpY = opponent.y + dy;
-
-      if (targetX === jumpX && targetY === jumpY) {
-        return isValidStep(opponent.x, opponent.y, jumpX, jumpY, walls);
-      }
+      if (targetX === jumpX && targetY === jumpY) return isValidStep(opponent.x, opponent.y, jumpX, jumpY, walls);
       if (isValidStep(opponent.x, opponent.y, targetX, targetY, walls)) {
         const isJumpBlocked = jumpX < 0 || jumpX > 8 || jumpY < 0 || jumpY > 8 || isBlockedByWall(opponent.x, opponent.y, jumpX, jumpY, walls);
-        if (isJumpBlocked) {
-          if (Math.abs(targetX - current.x) === 1 && Math.abs(targetY - current.y) === 1) return true;
-        }
+        if (isJumpBlocked && Math.abs(targetX - current.x) === 1 && Math.abs(targetY - current.y) === 1) return true;
       }
     }
     return false;
@@ -214,7 +196,6 @@ function App() {
     const visited = new Set();
     visited.add(`${startNode.x},${startNode.y}`);
     const directions = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }];
-
     while (queue.length > 0) {
       const { x, y } = queue.shift();
       if (y === targetRow) return true;
@@ -296,18 +277,13 @@ function App() {
 
   const isSpectator = isGameStarted && myRole !== 1 && myRole !== 2;
   const isFlipped = myRole === 1; 
-
   const topTime = isFlipped ? p2Time : p1Time;
   const bottomTime = isFlipped ? p1Time : p2Time;
 
   let resultMessage = "";
   if (winner) {
-    if (isSpectator) {
-      resultMessage = winner === 1 ? "백색 승리!" : "흑색 승리!";
-    } else {
-      if (winner === myRole) resultMessage = "승리!";
-      else resultMessage = "패배...";
-    }
+    if (isSpectator) resultMessage = winner === 1 ? "백색 승리!" : "흑색 승리!";
+    else resultMessage = winner === myRole ? "승리!" : "패배...";
   }
 
   return (
@@ -318,27 +294,48 @@ function App() {
         <div className="lobby-overlay">
           <div className="lobby-card">
             <h2 style={{marginBottom: '20px'}}>QUORIDOR ONLINE</h2>
-            {!myRole && (
-              <div className="role-selection">
-                <div className="role-buttons">
-                  <button className="role-btn white" disabled={takenRoles[1] !== null} onClick={() => selectRole(1)}>
-                    백색 (P1) {takenRoles[1] && <span className="taken-badge">사용 중</span>}
-                  </button>
-                  <button className="role-btn black" disabled={takenRoles[2] !== null} onClick={() => selectRole(2)}>
-                    흑색 (P2) {takenRoles[2] && <span className="taken-badge">사용 중</span>}
-                  </button>
-                </div>
-              </div>
-            )}
-            {myRole && (
-              <div className="ready-section">
-                <div className="status-box">
-                  <div className={`player-status ${readyStatus[1]?'ready':''}`}>P1: {readyStatus[1]?'준비 완료':'대기 중'}</div>
-                  <div className={`player-status ${readyStatus[2]?'ready':''}`}>P2: {readyStatus[2]?'준비 완료':'대기 중'}</div>
-                </div>
-                {!readyStatus[myRole] ? <button className="start-btn" onClick={toggleReady}>준비 하기</button> : <button className="start-btn waiting">대기 중...</button>}
-                <button className="cancel-btn" onClick={() => socket.emit('select_role', 0)}>나가기</button>
-              </div>
+            
+            {/* ★ 난이도 선택 화면 (조건부 렌더링) */}
+            {showDifficultySelect ? (
+               <div className="difficulty-overlay">
+                  <h3 style={{marginBottom:'10px'}}>난이도 선택</h3>
+                  <button className="diff-btn diff-1" onClick={() => startAiGame(1)}>🌱 매우 쉬움 (Very Easy)</button>
+                  <button className="diff-btn diff-2" onClick={() => startAiGame(2)}>🐣 쉬움 (Easy)</button>
+                  <button className="diff-btn diff-3" onClick={() => startAiGame(3)}>🛡️ 보통 (Normal)</button>
+                  <button className="diff-btn diff-4" onClick={() => startAiGame(4)}>🔥 어려움 (Hard)</button>
+                  <button className="diff-btn btn-back" onClick={() => setShowDifficultySelect(false)}>취소</button>
+               </div>
+            ) : (
+              <>
+                {!myRole && (
+                  <div className="role-selection">
+                    <div className="role-buttons">
+                      <button className="role-btn white" disabled={takenRoles[1] !== null} onClick={() => selectRole(1)}>
+                        백색 (P1) {takenRoles[1] && <span className="taken-badge">사용 중</span>}
+                      </button>
+                      <button className="role-btn black" disabled={takenRoles[2] !== null} onClick={() => selectRole(2)}>
+                        흑색 (P2) {takenRoles[2] && <span className="taken-badge">사용 중</span>}
+                      </button>
+                    </div>
+                    {/* ★ AI 모드 진입 버튼 */}
+                    <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+                        <button className="start-btn" style={{ backgroundColor: '#4c6ef5' }} onClick={() => setShowDifficultySelect(true)}>
+                            🤖 AI와 연습하기 (싱글)
+                        </button>
+                    </div>
+                  </div>
+                )}
+                {myRole && (
+                  <div className="ready-section">
+                    <div className="status-box">
+                      <div className={`player-status ${readyStatus[1]?'ready':''}`}>P1: {readyStatus[1]?'준비 완료':'대기 중'}</div>
+                      <div className={`player-status ${readyStatus[2]?'ready':''}`}>P2: {readyStatus[2]?'준비 완료':'대기 중'}</div>
+                    </div>
+                    {!readyStatus[myRole] ? <button className="start-btn" onClick={toggleReady}>준비 하기</button> : <button className="start-btn waiting">대기 중...</button>}
+                    <button className="cancel-btn" onClick={() => socket.emit('select_role', 0)}>나가기</button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -348,7 +345,6 @@ function App() {
         <header className="header">
           {isSpectator && <div className="spectator-badge">관전 모드</div>}
         </header>
-
         <main className="main-content">
           <aside className={`side-panel white-area ${turn === 1 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 3 : 1 }}>
             <div className="wall-counter white-box">남은 벽: <span className="count">{player1.wallCount}</span></div>
@@ -359,34 +355,24 @@ function App() {
               </div>
             ) : null}
           </aside>
-
           <section className="board-section" style={{ order: 2 }}>
             <div className="turn-display">
               {winner ? <span className="win-text">{resultMessage}</span> : <span className={turn===1?'t-white':'t-black'}>{turn===1?'● 백색 턴':'● 흑색 턴'}</span>}
             </div>
-
             <TimeBar time={topTime} />
-
             <div className="board-container">
               <div className="board" style={{ transform: isFlipped ? 'rotate(180deg)' : 'none' }}>
                 {Array.from({length:81}).map((_,i)=>{
                   const x=i%9, y=Math.floor(i/9);
                   const canMove=isMoveable(x,y);
-                  
-                  // ★ 잔상(Ghost) 렌더링 로직
                   const isGhostP1 = lastMove && lastMove.player === 1 && lastMove.x === x && lastMove.y === y;
                   const isGhostP2 = lastMove && lastMove.player === 2 && lastMove.x === x && lastMove.y === y;
-
                   return (
                     <div key={`c-${x}-${y}`} className={`cell ${canMove?'highlight':''}`} onClick={()=>handleCellClick(x,y)}>
-                      {/* 실제 말 */}
                       {player1.x===x&&player1.y===y&&<div className="pawn white-pawn"/>}
                       {player2.x===x&&player2.y===y&&<div className="pawn black-pawn"/>}
-                      
-                      {/* 잔상 말 (Ghost) */}
                       {isGhostP1 && <div className="ghost-pawn ghost-white"/>}
                       {isGhostP2 && <div className="ghost-pawn ghost-black"/>}
-                      
                       {canMove&&<div className="move-dot"/>}
                     </div>
                   );
@@ -398,7 +384,6 @@ function App() {
                   const canV=isWallMode&&canPlaceWall(x,y,'v');
                   const isPreviewH = previewWall && previewWall.x===x && previewWall.y===y && previewWall.orientation==='h';
                   const isPreviewV = previewWall && previewWall.x===x && previewWall.y===y && previewWall.orientation==='v';
-
                   return (
                     <React.Fragment key={`wp-${x}-${y}`}>
                       <div className={`wall-target h ${isWallMode?'in-wall-mode':''} ${canH?'placeable':''} ${isPreviewH?'preview':''}`} style={getHWallStyle(x,y)} onClick={()=>handleWallClick(x,y,'h')}/>
@@ -407,25 +392,18 @@ function App() {
                   );
                 })}
                 {(walls || []).map((wall,i)=>{
-                  // ★ 최신 벽 하이라이트 확인
                   const isLatest = lastWall && lastWall.x === wall.x && lastWall.y === wall.y && lastWall.orientation === wall.orientation;
-                  return (
-                    <div key={i} className={`placed-wall ${wall.orientation} ${isLatest?'latest':''}`} style={getPlacedWallStyle(wall)}/>
-                  );
+                  return (<div key={i} className={`placed-wall ${wall.orientation} ${isLatest?'latest':''}`} style={getPlacedWallStyle(wall)}/>);
                 })}
               </div>
             </div>
-
             <TimeBar time={bottomTime} />
-            
             {!isSpectator && !winner && isGameStarted && (
                <div className="controls-row">
                  <button className="btn-resign" onClick={resignGame}>항복 (Resign)</button>
                </div>
             )}
-
           </section>
-
           <aside className={`side-panel black-area ${turn === 2 && !winner ? 'active' : ''}`} style={{ order: isFlipped ? 1 : 3 }}>
             <div className="wall-counter black-box">남은 벽: <span className="count">{player2.wallCount}</span></div>
             {myRole === 2 ? (
@@ -436,17 +414,8 @@ function App() {
             ) : null}
           </aside>
         </main>
-        
         {isGameStarted && !isSpectator && <button className="reset-float" onClick={resetGame}>🔄</button>}
-        
-        {winner && (
-          <div className="overlay">
-            <div className="modal">
-              <h2>{resultMessage}</h2>
-              <button className="reset-large" onClick={resetGame}>로비로</button>
-            </div>
-          </div>
-        )}
+        {winner && (<div className="overlay"><div className="modal"><h2>{resultMessage}</h2><button className="reset-large" onClick={resetGame}>로비로</button></div></div>)}
       </div>
     </div>
   );

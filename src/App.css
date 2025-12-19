@@ -413,6 +413,45 @@ body {
   100% { box-shadow: 0 0 5px #fcc419; }
 }
 
+/* --- 🤖 AI 난이도 선택 모달 --- */
+.difficulty-overlay {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: white; /* 로비 카드 덮음 */
+  border-radius: 15px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  z-index: 10;
+}
+
+.diff-btn {
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s;
+  font-size: 1rem;
+}
+.diff-btn:active { transform: scale(0.98); }
+
+/* 난이도별 색상 */
+.diff-1 { background-color: #51cf66; } /* 매우 쉬움 - 연한 초록 */
+.diff-2 { background-color: #339af0; } /* 쉬움 - 파랑 */
+.diff-3 { background-color: #fcc419; color: #333; } /* 보통 - 노랑 */
+.diff-4 { background-color: #fa5252; } /* 어려움 - 빨강 */
+
+.btn-back {
+  background-color: transparent;
+  color: #868e96;
+  border: 1px solid #dee2e6;
+  margin-top: 5px;
+}
+
 
 .start-btn { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 .cancel-btn { width: 100%; margin-top: 10px; padding: 10px; background: #868e96; color: white; border: none; border-radius: 8px; cursor: pointer; }
@@ -421,3 +460,4 @@ body {
 .modal { background: white; color: black; padding: 30px; border-radius: 15px; text-align: center; }
 .reset-large { margin-top: 15px; padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
 .reset-float { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: #c92a2a; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+
