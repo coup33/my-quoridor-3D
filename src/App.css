@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Mobile Fixed v4) */
+/* App.css - Quoridor Web Game Style (Mobile Layout Perfect Fix) */
 
 * {
   box-sizing: border-box;
@@ -46,10 +46,10 @@ body {
   flex-direction: column;
   overflow: hidden;
   justify-content: center;
-  position: relative; 
+  position: relative;
 }
 
-/* PC 타이틀 */
+/* --- PC 전용 스타일 --- */
 .game-title {
   font-weight: 800;
   letter-spacing: 5px;
@@ -146,100 +146,101 @@ body {
 .placed-wall.latest { background: #ffec99 !important; box-shadow: 0 0 10px #fcc419, 0 2px 4px rgba(0,0,0,0.5); animation: wallPulse 2s infinite; z-index: 25; }
 @keyframes wallPulse { 0% { box-shadow: 0 0 5px #fcc419; } 50% { box-shadow: 0 0 15px #fcc419; } 100% { box-shadow: 0 0 5px #fcc419; } }
 
-/* 메뉴 버튼 (PC) */
+/* 메뉴 플로팅 버튼 (PC용) */
 .menu-float { position: fixed; bottom: 20px; left: 20px; padding: 10px 20px; background-color: #343a40; color: white; border: 1px solid #495057; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 500; }
 .menu-float:hover { background-color: #495057; }
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 여기를 최종 수정함 ★
+   ★ 화면 중앙 정렬 및 비율 배분 최종 수정 ★
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    /* 보드 사이즈 최적화 */
+    /* 보드 크기: 세로 공간 확보를 위해 적절히 조정 */
     --cell: 6.5vmin; 
     --gap: 1vmin;
     --pawn: 4.5vmin;
     --wall-thick: 1.0vmin;
   }
 
-  /* 1. 타이틀: 최상단 고정 및 중앙 정렬 */
-  .game-title {
-    position: fixed; /* absolute -> fixed로 변경하여 스크롤 영향 최소화 */
-    top: 15px;       /* 상단 여백 조금 더 확보 */
-    left: 50%;       /* 중앙 기준점 */
-    transform: translateX(-50%); /* 정확한 중앙 정렬 */
-    width: auto;     /* 폭 자동 */
-    writing-mode: horizontal-tb;
-    margin: 0;
-    font-size: 1.5rem;
-    letter-spacing: 3px;
-    z-index: 200;    /* 메뉴보다 위? 아래? 배치 고려 */
-    white-space: nowrap;
-  }
-
-  /* 2. 메인 콘텐츠: 상단 여백(padding-top)으로 타이틀 공간 확보 */
-  .main-content {
-    flex-direction: column;
-    justify-content: center;
-    gap: 5px;
+  /* 1. 컨테이너: 상단부터 정렬하되 여백 없앰 */
+  .container {
+    justify-content: flex-start;
     padding: 0;
-    padding-top: 50px; /* 타이틀과 겹치지 않게 밀어냄 */
-    height: 100%;
   }
 
-  /* 3. 벽 정보 패널: 타임바보다 작게, 알약 모양 */
+  /* 2. 타이틀: 상단에 상대적으로 배치 (겹침 방지) */
+  .game-title {
+    position: relative; /* flow 안에 포함 */
+    top: auto;
+    left: auto;
+    transform: none;
+    writing-mode: horizontal-tb;
+    width: 100%;
+    height: 40px; /* 고정 높이 할당 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 5px 0 0 0;
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    order: -2; 
+  }
+
+  /* 3. 메뉴 버튼: 우측 상단 모서리 고정 */
+  .menu-float {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    bottom: auto;
+    left: auto;
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    z-index: 200;
+  }
+
+  /* 4. 메인 콘텐츠: 남은 높이를 균등 배분 (space-evenly) */
+  .main-content {
+    flex: 1; /* 남은 공간 모두 차지 */
+    flex-direction: column;
+    justify-content: space-evenly; /* ★ 핵심: 요소 간 간격 자동 배분 */
+    align-items: center;
+    gap: 0; 
+    padding: 0 0 15px 0; /* 하단 내비게이션 바 고려 패딩 */
+    height: auto;
+  }
+
+  /* 5. 상하단 패널 (벽 정보) */
   .side-panel {
-    width: auto;          /* 내용물에 맞게 */
-    min-width: 200px;     /* 최소 너비 */
-    max-width: 280px;     /* 최대 너비 제한 (타임바보다 작게) */
-    height: 40px;
-    padding: 0 20px;
+    /* ★ 너비를 확 줄여서 타임바보다 짧게 (요청사항 반영) */
+    width: 75%;
+    max-width: 280px; 
+    height: 38px;
+    padding: 0 10px;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    margin: 0 auto;       /* 중앙 정렬 */
+    margin: 0; 
     flex-shrink: 0;
-    border-radius: 50px;  /* 알약 모양 */
   }
 
-  /* 4. 메뉴 버튼: 우측 상단 고정 (크기 제한 필수!) */
-  .menu-float { 
-    position: fixed;
-    top: 15px;       /* 타이틀과 같은 높이 */
-    right: 15px;     /* 우측 모서리 */
-    bottom: auto;
-    left: auto;
-    padding: 6px 12px; 
-    font-size: 0.75rem; 
-    z-index: 300;    /* 타이틀보다 높게 */
-    width: auto !important; /* ★ 화면 가림 방지 핵심 */
-    max-width: fit-content;
-    height: auto;
-  }
-
-  /* 5. 보드 섹션 */
+  /* 6. 보드 섹션 */
   .board-section {
     height: auto;
-    margin: 5px 0;
+    margin: 0; /* 여백 제거하고 space-evenly에 맡김 */
   }
 
-  /* 6. 하단 패널 여백 확보 */
-  .side-panel:last-child {
-    margin-bottom: 20px; 
-  }
+  /* 7. 턴 표시 및 타임바 간격 */
+  .turn-display { margin-bottom: 2px; font-size: 0.9rem; }
+  .time-bar-wrapper { margin-top: 25px; margin-bottom: 5px; width: 90%; max-width: 350px; }
+  .status-badge { font-size: 0.65rem; padding: 2px 6px; top: -22px; }
 
-  .wall-counter { margin: 0; padding: 0; background: transparent; font-size: 0.9rem; white-space: nowrap; }
-  .count { display: inline; font-size: 1.1rem; margin-left: 5px; }
-  
-  .button-group { flex-direction: row; gap: 8px; flex-wrap: nowrap; }
-  .btn { padding: 5px 12px; font-size: 0.8rem; height: 30px; min-width: 50px; }
-
-  /* 타임바 여백 */
-  .time-bar-wrapper { margin-top: 30px; margin-bottom: 5px; }
-  /* 배지 위치 */
-  .status-badge { font-size: 0.7rem; padding: 2px 8px; top: -25px; }
+  /* 8. 글자 및 버튼 크기 미세 조정 */
+  .wall-counter { font-size: 0.85rem; }
+  .count { font-size: 1rem; margin-left: 5px; }
+  .button-group { gap: 8px; }
+  .btn { padding: 4px 10px; font-size: 0.75rem; height: 28px; min-width: 50px; }
 }
 
 /* 로비 & 모달 (변경 없음) */
@@ -256,8 +257,6 @@ body {
 .role-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .start-btn { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 .cancel-btn { width: 100%; margin-top: 10px; padding: 10px; background: #868e96; color: white; border: none; border-radius: 8px; cursor: pointer; }
-
-/* 메뉴 모달 내 버튼 */
 .menu-title { margin-bottom: 20px; font-size: 1.5rem; font-weight: bold; color: #333; }
 .menu-btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 1rem; }
 .btn-exit { background-color: #e03131; color: white; }
