@@ -1,4 +1,4 @@
-/* App.css - Standard Stable Layout (Clean Reset) */
+/* App.css - Final Complete Version (Mobile Fixed & Tight Layout) */
 
 * {
   box-sizing: border-box;
@@ -24,82 +24,73 @@
   :root { --cell: 42px; --gap: 6px; --pawn: 30px; --wall-thick: 8px; }
   .game-title { font-size: 2rem !important; left: 10px !important; }
   .time-bar-wrapper { margin-top: 30px !important; margin-bottom: 4px !important; height: 20px !important; }
-  .status-badge { top: -25px !important; font-size: 0.7rem !important; }
-  .turn-display { font-size: 1rem !important; margin-bottom: 2px !important; }
   .side-panel { width: 140px !important; padding: 10px !important; }
   .count { font-size: 1.2rem !important; }
   .btn { padding: 8px !important; font-size: 0.9rem !important; }
 }
 
+/* ★ 핵심 1: 화면 전체를 물리적 창틀에 고정 (스크롤/튕김 완벽 방지) */
 body {
   font-family: 'Pretendard', sans-serif;
   background-color: #212529;
   color: #f8f9fa;
-  overflow: hidden;
+  
+  /* 화면을 뷰포트에 강제로 못 박음 */
+  position: fixed; 
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%; height: 100%;
+  
+  overflow: hidden; 
+  overscroll-behavior: none;
+  
+  -webkit-user-select: none;
+  user-select: none;
 }
 
+/* ★ 핵심 2: 여백 제어 (상단 여백을 강제로 줄임) */
 .container {
-  width: 100vw;
-  height: 100vh; 
-  height: 100dvh; 
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  justify-content: center;
+  
+  /* PC 기준 중앙 정렬 */
+  justify-content: center; 
+  align-items: center;     
+  
   position: relative;
+  
+  /* 모바일에서 노치 영역(safe-area)을 무시하고 10px만 줌 (개발자 도구처럼 딱 붙게) */
+  padding-top: 10px; 
+  /* 하단은 홈 바 때문에 안전 영역 유지 */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* --- PC 전용 스타일 --- */
+/* --- [PC 전용 스타일] --- */
 .game-title {
-  font-weight: 800;
-  letter-spacing: 5px;
-  color: #adb5bd;
-  text-transform: uppercase;
-  position: fixed;
-  left: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  writing-mode: vertical-rl; 
-  text-orientation: upright;
-  z-index: 100;
-  margin: 0;
-  font-size: 2.5rem;
+  font-weight: 800; letter-spacing: 5px; color: #adb5bd;
+  text-transform: uppercase; position: fixed;
+  left: 20px; top: 50%; transform: translateY(-50%);
+  writing-mode: vertical-rl; text-orientation: upright;
+  z-index: 100; margin: 0; font-size: 2.5rem;
 }
-
 .header { display: none; }
-
 .game-wrapper {
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  transition: filter 0.3s;
+  flex: 1; width: 100%; height: 100%;
+  display: flex; justify-content: center; align-items: center;
+  position: relative; transition: filter 0.3s;
 }
-
 .game-wrapper.blurred { filter: blur(5px); pointer-events: none; }
-
 .main-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 30px;
-  width: 100%;
-  height: 100%;
-  padding: 10px 0;
+  display: flex; align-items: center; justify-content: center;
+  gap: 30px; width: 100%; height: 100%; padding: 10px 0;
 }
 
-/* 플레이어 패널 (PC) */
+/* 패널 & 버튼 */
 .side-panel {
-  width: 160px;
-  padding: 15px;
-  background: #343a40;
-  border: 1px solid #495057;
-  border-radius: 12px;
-  text-align: center;
-  transition: all 0.3s;
+  width: 160px; padding: 15px; background: #343a40;
+  border: 1px solid #495057; border-radius: 12px;
+  text-align: center; transition: all 0.3s;
 }
 .side-panel.active { border: 2px solid #fcc419; box-shadow: 0 0 15px rgba(252, 196, 25, 0.3); }
 .wall-counter { background: #212529; padding: 8px; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem; }
@@ -109,28 +100,29 @@ body {
 .btn.selected { background: #fcc419; color: black; }
 .btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* 보드 섹션 (PC) */
+/* 보드 섹션 */
 .board-section { display: flex; flex-direction: column; align-items: center; justify-content: center; width: auto; height: 100%; }
 .t-white { color: #ced4da; } .t-black { color: #868e96; }
 
-/* 타임 바 & 상단 정보 (PC) */
+/* 타임 바 (PC) */
 .time-bar-container { width: 95%; max-width: 480px; margin: 8px 0; margin-top: 20px; }
 .time-info-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 5px; width: 100%; }
 .info-left { justify-self: start; } .info-center { justify-self: center; } .info-right { justify-self: end; }
 .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: white; white-space: nowrap; }
-.badge-spectator { background-color: #e03131; animation: pulse 2s infinite; } .badge-ingame { background-color: #228be6; }
+.badge-spectator { background-color: #e03131; animation: pulse 2s infinite; } 
+.badge-ingame { background-color: #228be6; }
 .badge-resign { background-color: #343a40; color: #fa5252; border: 1px solid #fa5252; cursor: pointer; transition: 0.2s; }
 .badge-resign:hover { background-color: #fa5252; color: white; }
 .turn-indicator-box { display: flex; align-items: center; gap: 6px; font-weight: bold; color: #ced4da; font-size: 0.9rem; }
 .turn-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 .dot-white { background-color: #f8f9fa; border: 1px solid #adb5bd; } .dot-black { background-color: #212529; border: 1px solid #868e96; }
 .time-bar-track { width: 100%; height: 24px; background-color: #343a40; border-radius: 12px; overflow: hidden; position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
-.time-bar-fill { height: 100%; background-color: #27ae60; width: 100%; border-radius: 12px; transition: width 0.5s linear, background-color 0.3s; }
+.time-bar-fill { height: 100%; background-color: #27ae60; width: 100%; border-radius: 12px; transition: width 0.5s linear; }
 .time-bar-fill.warning { background-color: #fcc419; } .time-bar-fill.danger { background-color: #e03131; }
 .time-text { position: absolute; width: 100%; text-align: center; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); z-index: 2; }
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-/* 보드 (PC) */
+/* 보드판 (PC) */
 .board-container { padding: 10px; background: #181a1b; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); flex-shrink: 0; }
 .board { position: relative; display: grid; grid-template-columns: repeat(9, var(--cell)); grid-template-rows: repeat(9, var(--cell)); gap: var(--gap); transition: transform 0.5s ease; }
 .cell { width: var(--cell); height: var(--cell); background: #495057; border-radius: 2px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
@@ -156,84 +148,96 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 로비 정상화 및 순차적 배치 (Standard Layout) ★
+   ★ 전략: [타이틀 고정] - [중앙 뭉치(상대+보드)] - [하단 고정]
    ================================================= */
-/* App.css의 맨 아래쪽 모바일 전용 부분만 이 코드로 교체하세요 */
-
 @media (max-width: 768px) {
   :root {
-    /* ★ 수정: 보드 크기 대폭 확대 (5.5 -> 8.8) */
-    /* 가로폭(행동버튼)에 얼추 맞게 꽉 채움 */
+    /* ★ 보드 확대: 8.8vmin (화면 가로폭에 맞게 시원하게) */
     --cell: 8.8vmin; 
-    
     --gap: 1vmin;
-    
-    /* 셀이 커진 만큼 말과 벽도 비율에 맞춰 키움 */
     --pawn: 6.0vmin; 
     --wall-thick: 1.5vmin; 
   }
 
-  /* 1. 컨테이너: 중앙 정렬 (로비 복구) */
+  /* 1. 컨테이너: 상단 정렬 + 가로 중앙 정렬 */
   .container {
-    justify-content: center; 
-    padding-top: 0;
+    justify-content: flex-start;
+    align-items: center; 
+    padding-top: 0; /* body에서 10px 줬으므로 여기선 제거 */
   }
 
-  /* 2. 타이틀: 흐름 내 배치 */
+  /* 2. 타이틀: 흐름 내 배치 (absolute 제거) */
   .game-title {
     position: relative;
     top: auto; left: auto; transform: none; writing-mode: horizontal-tb;
     width: 100%; text-align: center;
+    
+    /* 상단 마진으로 띄우기 (body 10px + 이거 5px = 15px) */
     margin: 5px 0; 
-    font-size: 1.5rem; letter-spacing: 2px;
-    z-index: 50;
+    
+    font-size: 1.5rem; letter-spacing: 2px; z-index: 50;
   }
 
-  /* 3. 메뉴 버튼 */
+  /* 3. 메뉴 버튼: 우측 상단 고정 */
   .menu-float { 
     position: absolute;
     top: 10px; right: 15px; bottom: auto; left: auto;
     padding: 6px 12px; font-size: 0.8rem; z-index: 200;
   }
 
-  /* 4. 메인 콘텐츠: 위에서 아래로 순서대로 쌓음 */
+  /* 4. 하단 고정 내 패널 (pos-bottom) */
+  .side-panel.pos-bottom {
+    position: absolute;
+    bottom: 80px; /* 엄지손가락 닿기 좋은 위치 */
+    left: 50%; transform: translateX(-50%);
+    width: 90%; max-width: 350px; height: 45px;
+    margin: 0; padding: 0 15px; z-index: 100;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #343a40; box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+  }
+
+  /* 5. 중앙 뭉치 (상대패널+보드) */
   .main-content {
     flex: 1;
     display: flex; flex-direction: column;
-    justify-content: center; /* 내용물 중앙 정렬 */
-    align-items: center;
-    gap: 10px; /* 요소 간 간격 */
-    padding: 10px 0;
-    height: auto;
+    /* 상단 패딩으로 위치 잡기 */
+    padding-top: 50px; 
+    padding-bottom: 140px; 
+    
+    justify-content: center; 
+    align-items: center; /* 내부 요소도 중앙 정렬 */
+    gap: 0;
+    width: 100%;
+    height: 100%;
   }
 
-  /* 5. 패널 공통 */
-  .side-panel {
+  /* 6. 상대 패널 */
+  .side-panel.pos-top {
+    position: relative; 
     width: 90%; max-width: 320px; height: 40px;
     padding: 0 10px;
     display: flex; justify-content: space-between; align-items: center;
-    margin: 0 auto;
+    margin: 0 auto; 
+    margin-bottom: 5px; 
     flex-shrink: 0;
-    white-space: nowrap;
   }
 
-  /* 6. 보드 섹션 */
+  /* 7. 보드 섹션 */
   .board-section {
     flex-shrink: 0; margin: 0;
     display: flex; flex-direction: column;
     justify-content: center; align-items: center;
   }
-
-  /* 타임바 & 턴 정보 */
+  
   .time-bar-container { 
-    width: 90%; max-width: 320px; 
-    margin-top: 5px; 
+    width: 90%; max-width: 320px;
+    margin-top: 0 !important; 
     margin-bottom: 5px;
     flex-shrink: 0; 
   }
-  .status-badge { font-size: 0.65rem; padding: 2px 6px; }
   
-  /* 버튼, 텍스트 */
+  /* 8. 기타 스타일 */
+  .status-badge { font-size: 0.65rem; padding: 2px 6px; }
   .wall-counter { margin: 0; padding: 0; background: transparent; font-size: 0.9rem; }
   .count { display: inline; font-size: 1.1rem; margin-left: 5px; }
   .button-group { display: flex; flex-direction: row; gap: 8px; flex-wrap: nowrap; flex-shrink: 0; }
