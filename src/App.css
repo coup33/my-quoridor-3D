@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Final Polish: Margin Adjustments) */
+/* App.css - Quoridor Web Game Style (Final Position Lifted) */
 
 * {
   box-sizing: border-box;
@@ -24,6 +24,8 @@
   :root { --cell: 42px; --gap: 6px; --pawn: 30px; --wall-thick: 8px; }
   .game-title { font-size: 2rem !important; left: 10px !important; }
   .time-bar-wrapper { margin-top: 30px !important; margin-bottom: 4px !important; height: 20px !important; }
+  .status-badge { top: -25px !important; font-size: 0.7rem !important; }
+  .turn-display { font-size: 1rem !important; margin-bottom: 2px !important; }
   .side-panel { width: 140px !important; padding: 10px !important; }
   .count { font-size: 1.2rem !important; }
   .btn { padding: 8px !important; font-size: 0.9rem !important; }
@@ -182,11 +184,10 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 전략: 상단/하단 고정 + 여백 미세 조정
+   ★ 전략: 상단/하단 고정(Anchored) + 중앙 요소 위로 이동(Lifted)
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    /* 보드 크기: 6.0vmin */
     --cell: 6.0vmin; 
     --gap: 1vmin;
     --pawn: 4.2vmin;
@@ -199,11 +200,10 @@ body {
     padding-top: 0;
   }
 
-  /* 2. [상단 고정] 타이틀 - 위쪽 여백 축소 */
+  /* 2. [상단 고정] 타이틀 - 마진 줄임 */
   .game-title {
     position: absolute; 
-    /* ★ 수정: 위로 더 바짝 붙임 (5px -> 2px) */
-    top: 2px;
+    top: 2px; /* 상단 딱 붙임 */
     left: 50%;
     transform: translateX(-50%);
     width: auto;
@@ -218,7 +218,6 @@ body {
   /* 3. [상단 고정] 메뉴 버튼 */
   .menu-float { 
     position: absolute;
-    /* 타이틀 위치에 맞춰 미세 조정 */
     top: 5px; 
     right: 15px;
     bottom: auto; left: auto;
@@ -227,11 +226,11 @@ body {
     z-index: 200;
   }
 
-  /* 4. [하단 고정] 행동 버튼 뭉치 (내 패널) - 아래 여백 확대 */
+  /* 4. [하단 고정] 행동 버튼 (내 패널) - 위로 올림 */
   .side-panel.pos-bottom {
     position: absolute;
-    /* ★ 수정: 바닥에서 더 위로 띄움 (20px -> 35px) */
-    bottom: 35px;
+    /* ★ 수정: 바닥에서 60px 띄워서 확실히 분리 */
+    bottom: 60px;
     left: 50%;
     transform: translateX(-50%);
     
@@ -251,18 +250,21 @@ body {
     box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
   }
 
-  /* 5. [중앙 영역] 메인 콘텐츠 */
+  /* 5. [중앙 영역] 메인 콘텐츠 - 전체 덩어리 위로 이동 */
   .main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
-    /* ★ 수정: 상하단 고정 요소 영역 침범 방지를 위해 패딩 조정 */
-    padding-top: 50px; 
-    padding-bottom: 90px; /* 하단 버튼이 올라온 만큼 패딩도 늘림 */
     
-    justify-content: space-evenly; 
+    /* ★ 핵심 수정: 상단 타이틀 공간(50px) 확보, 
+       하단 패딩을 크게(160px) 주어 내용물을 위로 밀어 올림 */
+    padding-top: 50px; 
+    padding-bottom: 160px; 
+    
+    /* 요소들을 중앙에 모으되, 간격을 좁게 */
+    justify-content: center; 
     align-items: center;
-    gap: 0;
+    gap: 5px; /* 오밀조밀하게 */
     height: 100%;
   }
 
