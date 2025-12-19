@@ -24,18 +24,31 @@ const playSound = (name) => {
   }
 };
 
-const TimeBar = ({ time, maxTime = 90, badge, rightElement }) => {
+// ★ [수정] TimeBar: 상단 정보창(좌/중/우)과 하단 게이지바를 통합 관리
+const TimeBar = ({ time, maxTime = 90, left, center, right }) => {
   const percentage = Math.min(100, Math.max(0, (time / maxTime) * 100));
   let statusClass = '';
   if (time < 10) statusClass = 'danger';
   else if (time < 30) statusClass = 'warning';
 
+  const hasHeader = left || center || right;
+
   return (
-    <div className="time-bar-wrapper">
-      {badge}
-      {rightElement}
-      <div className={`time-bar-fill ${statusClass}`} style={{ width: `${percentage}%` }}/>
-      <div className="time-text">{time}s</div>
+    <div className="time-bar-container">
+      {/* 상단 정보 행 (존재할 때만 렌더링) */}
+      {hasHeader && (
+        <div className="time-info-row">
+          <div className="info-left">{left}</div>
+          <div className="info-center">{center}</div>
+          <div className="info-right">{right}</div>
+        </div>
+      )}
+      
+      {/* 진행 바 */}
+      <div className="time-bar-track">
+        <div className={`time-bar-fill ${statusClass}`} style={{ width: `${percentage}%` }}/>
+        <div className="time-text">{time}s</div>
+      </div>
     </div>
   );
 };
@@ -239,6 +252,7 @@ function App() {
   const topTime = isFlipped ? p2Time : p1Time;
   const bottomTime = isFlipped ? p1Time : p2Time;
 
+  // 배지 설정 (왼쪽)
   let topBadge = null;
   if (isGameStarted) {
     if (isSpectator) {
@@ -248,6 +262,7 @@ function App() {
     }
   }
 
+  // 항복 버튼 (오른쪽)
   let resignButton = null;
   if (!isSpectator && !winner && isGameStarted) {
     resignButton = (
@@ -257,13 +272,28 @@ function App() {
     );
   }
 
-  let resultTitle = "";
-  let resultDesc = "";
+  // ★ [추가] 턴 표시 로직 (중앙) - 점 색상 구분
+  let turnIndicator = null;
   if (winner) {
+    let resultTitle = "";
     const isWin = winner === myRole;
     if (isSpectator) resultTitle = winner === 1 ? "백색 승리!" : "흑색 승리!";
     else resultTitle = isWin ? "승리!" : "패배...";
-    
+    turnIndicator = <span className="win-text">{resultTitle}</span>;
+  } else {
+    // 턴 점 색상 클래스
+    const dotClass = turn === 1 ? 'dot-white' : 'dot-black';
+    const turnText = turn === 1 ? '백색 턴' : '흑색 턴';
+    turnIndicator = (
+      <div className="turn-indicator-box">
+        <div className={`turn-dot ${dotClass}`}></div>
+        <span className="turn-text">{turnText}</span>
+      </div>
+    );
+  }
+
+  let resultDesc = "";
+  if (winner) {
     if (winReason === 'timeout') resultDesc = "(시간 초과)";
     else if (winReason === 'resign') resultDesc = "(기권)";
   }
@@ -332,11 +362,8 @@ function App() {
             ) : null}
           </aside>
           <section className="board-section" style={{ order: 2 }}>
-            <div className="turn-display">
-              {winner ? <span className="win-text">{resultTitle}</span> : <span className={turn===1?'t-white':'t-black'}>{turn===1?'● 백색 턴':'● 흑색 턴'}</span>}
-            </div>
-
-            <TimeBar time={topTime} badge={topBadge} rightElement={resignButton} />
+            {/* ★ 상단 타임 바: 좌측 배지 + 중앙 턴표시 + 우측 항복버튼 */}
+            <TimeBar time={topTime} left={topBadge} center={turnIndicator} right={resignButton} />
             
             <div className="board-container">
               <div className="board" style={{ transform: isFlipped ? 'rotate(180deg)' : 'none' }}>

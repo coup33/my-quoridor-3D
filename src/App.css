@@ -1,4 +1,4 @@
-/* App.css - Quoridor Web Game Style (Safe Flex Layout) */
+/* App.css - Quoridor Web Game Style (Turn Dot & Alignment Fix) */
 
 * {
   box-sizing: border-box;
@@ -24,8 +24,6 @@
   :root { --cell: 42px; --gap: 6px; --pawn: 30px; --wall-thick: 8px; }
   .game-title { font-size: 2rem !important; left: 10px !important; }
   .time-bar-wrapper { margin-top: 30px !important; margin-bottom: 4px !important; height: 20px !important; }
-  .status-badge { top: -25px !important; font-size: 0.7rem !important; }
-  .turn-display { font-size: 1rem !important; margin-bottom: 2px !important; }
   .side-panel { width: 140px !important; padding: 10px !important; }
   .count { font-size: 1.2rem !important; }
   .btn { padding: 8px !important; font-size: 0.9rem !important; }
@@ -111,20 +109,56 @@ body {
 
 /* 보드 섹션 (PC) */
 .board-section { display: flex; flex-direction: column; align-items: center; justify-content: center; width: auto; height: 100%; }
-.turn-display { margin-bottom: 5px; font-size: 1.1rem; font-weight: bold; height: 24px; }
 .t-white { color: #ced4da; } .t-black { color: #868e96; }
 
-/* 타임 바 & 배지 (PC) */
-.time-bar-wrapper { width: 95%; max-width: 480px; height: 24px; background-color: #343a40; border-radius: 12px; overflow: visible; position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); margin: 8px 0; margin-top: 40px; }
-.status-badge { position: absolute; top: -32px; left: 0; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: white; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap; }
-.badge-spectator { background-color: #e03131; animation: pulse 2s infinite; } .badge-ingame { background-color: #228be6; }
-.badge-resign { left: auto !important; right: 0; background-color: #343a40; color: #fa5252; border: 1px solid #fa5252; cursor: pointer; transition: 0.2s; }
+/* ★ 타임 바 컨테이너 & 상단 정보창 (Grid Layout) */
+.time-bar-container {
+  width: 95%; max-width: 480px;
+  margin: 8px 0;
+  margin-top: 20px; /* PC 상단 여백 */
+}
+
+.time-info-row {
+  display: grid;
+  /* 좌측(배지) - 중앙(턴) - 우측(항복) : 1fr auto 1fr 비율 */
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-bottom: 5px;
+  width: 100%;
+}
+
+.info-left { justify-self: start; }
+.info-center { justify-self: center; }
+.info-right { justify-self: end; }
+
+/* 배지 스타일 (static position) */
+.status-badge {
+  padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; 
+  font-weight: bold; color: white; white-space: nowrap;
+}
+.badge-spectator { background-color: #e03131; animation: pulse 2s infinite; } 
+.badge-ingame { background-color: #228be6; }
+.badge-resign { background-color: #343a40; color: #fa5252; border: 1px solid #fa5252; cursor: pointer; transition: 0.2s; }
 .badge-resign:hover { background-color: #fa5252; color: white; }
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+/* 턴 표시 (점 + 글씨) */
+.turn-indicator-box {
+  display: flex; align-items: center; gap: 6px; font-weight: bold; color: #ced4da; font-size: 0.9rem;
+}
+.turn-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.dot-white { background-color: #f8f9fa; border: 1px solid #adb5bd; }
+.dot-black { background-color: #212529; border: 1px solid #868e96; }
+
+/* 타임 바 트랙 */
+.time-bar-track {
+  width: 100%; height: 24px; background-color: #343a40; border-radius: 12px; 
+  overflow: hidden; position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+}
 .time-bar-fill { height: 100%; background-color: #27ae60; width: 100%; border-radius: 12px; transition: width 0.5s linear, background-color 0.3s; }
 .time-bar-fill.warning { background-color: #fcc419; } .time-bar-fill.danger { background-color: #e03131; }
 .time-text { position: absolute; width: 100%; text-align: center; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); z-index: 2; }
-.controls-row { width: 95%; max-width: 480px; display: flex; justify-content: flex-end; margin-top: 8px; margin-bottom: 5px; }
+
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
 /* 보드 (PC) */
 .board-container { padding: 10px; background: #181a1b; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); flex-shrink: 0; }
@@ -152,45 +186,41 @@ body {
 
 /* =================================================
    [📱 모바일 최적화 (가로폭 768px 이하)]
-   ★ 안전한 Flex Column 정렬 (absolute 제거) ★
    ================================================= */
 @media (max-width: 768px) {
   :root {
-    /* 보드 크기: 6.0vmin (적당한 크기 유지) */
+    /* 보드 크기 */
     --cell: 6.0vmin; 
     --gap: 1vmin;
     --pawn: 4.2vmin;
     --wall-thick: 1.0vmin;
   }
 
-  /* 1. 컨테이너: 상단 정렬 */
+  /* 1. 컨테이너 */
   .container {
     justify-content: flex-start;
     padding-top: 0;
   }
 
-  /* 2. 타이틀: 고정 높이, 흐름 내 배치 */
+  /* 2. [상단 고정] 타이틀 */
   .game-title {
-    position: relative; 
-    width: 100%;
-    height: 50px; 
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: absolute; 
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    writing-mode: horizontal-tb;
     margin: 0;
-    
-    top: auto; left: auto; transform: none; writing-mode: horizontal-tb;
-    order: -2; /* 가장 위 */
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     letter-spacing: 2px;
-    z-index: 50;
-    flex-shrink: 0;
+    z-index: 100;
+    white-space: nowrap;
   }
 
-  /* 3. 메뉴 버튼: 우측 상단 고정 (타이틀 옆) */
+  /* 3. [상단 고정] 메뉴 버튼 */
   .menu-float { 
     position: absolute;
-    top: 12px;
+    top: 5px; 
     right: 15px;
     bottom: auto; left: auto;
     padding: 6px 12px; 
@@ -198,69 +228,78 @@ body {
     z-index: 200;
   }
 
-  /* 4. 메인 콘텐츠: 세로 쌓기 */
+  /* 4. [하단 고정] 행동 버튼 뭉치 (내 패널) 
+     - 꼼수 없이 CSS Order는 React Logic에 맡기고, 
+     - Flexbox로 자연스럽게 아래에 위치하도록 함 
+  */
+  .side-panel:last-child {
+    /* 기존 absolute 제거 */
+    position: relative; 
+    width: 90%; 
+    max-width: 350px;
+    height: 45px;
+    margin: 0 auto;
+    margin-bottom: 20px; /* 바닥 여백 */
+    
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    white-space: nowrap;
+    
+    flex-shrink: 0; /* 찌그러짐 방지 */
+  }
+
+  /* 5. [중앙 영역] 메인 콘텐츠 */
   .main-content {
-    flex: 1; /* 남은 높이 차지 */
+    flex: 1;
     display: flex;
     flex-direction: column;
-    /* 위아래 공간을 균등 배분하여 요소들이 찌그러지지 않게 함 */
     justify-content: space-evenly; 
     align-items: center;
+    padding: 50px 0 0 0; /* 상단 타이틀 공간 확보 */
     gap: 0;
-    padding: 0 0 20px 0; /* 하단 버튼 잘림 방지 */
     height: 100%;
   }
 
-  /* 5. 패널 공통 스타일 (상/하단 모두 적용) */
-  /* ★ 중요: absolute를 뺐습니다. 이제 React 순서(order)대로 위/아래에 배치됩니다. */
-  .side-panel {
-    position: relative; /* absolute 금지 */
-    width: 90%;
-    max-width: 350px;
-    height: 45px; /* 고정 높이 */
+  /* 6. 상대 패널 */
+  .side-panel:first-of-type {
+    width: 75%;
+    max-width: 280px;
+    height: 38px;
     padding: 0 10px;
-    margin: 0 auto; /* 가로 중앙 */
     
     display: flex;
-    flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    
-    /* ★ 핵심: 절대 줄어들거나 사라지지 않음 */
-    flex-shrink: 0; 
+    margin: 0 auto;
+    flex-shrink: 0;
     white-space: nowrap;
-  }
-
-  /* 6. 텍스트 및 버튼 */
-  .wall-counter { margin: 0; padding: 0; background: transparent; font-size: 0.9rem; }
-  .count { display: inline; font-size: 1.1rem; margin-left: 5px; }
-  
-  .button-group { 
-    display: flex; flex-direction: row; gap: 8px; 
-    flex-wrap: nowrap; flex-shrink: 0; 
-  }
-  .btn { 
-    padding: 0 12px; font-size: 0.8rem; height: 32px; 
-    min-width: 55px; display: flex; align-items: center; justify-content: center;
   }
 
   /* 7. 보드 섹션 */
   .board-section {
-    /* 공간이 부족하면 보드가 먼저 줄어들게 설정 */
-    flex: 0 1 auto; 
-    margin: 5px 0;
+    flex-shrink: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    /* 너무 커지는 것 방지 */
-    max-height: 55vh;
   }
 
-  /* 타임바 */
-  .turn-display { margin-bottom: 2px; font-size: 0.9rem; flex-shrink: 0; }
-  .time-bar-wrapper { margin-top: 25px; margin-bottom: 5px; width: 90%; max-width: 320px; flex-shrink: 0; }
-  .status-badge { font-size: 0.65rem; padding: 2px 6px; top: -23px; }
+  /* 8. 타임바 모바일 너비 */
+  .time-bar-container {
+    width: 85%; max-width: 300px; margin-top: 10px;
+  }
+  
+  /* 배지 폰트 축소 */
+  .status-badge, .badge-resign { font-size: 0.65rem; padding: 2px 6px; }
+  .turn-indicator-box { font-size: 0.8rem; }
+  
+  /* 버튼, 텍스트 스타일 */
+  .wall-counter { margin: 0; padding: 0; background: transparent; font-size: 0.9rem; }
+  .count { display: inline; font-size: 1.1rem; margin-left: 5px; }
+  .button-group { display: flex; flex-direction: row; gap: 8px; flex-wrap: nowrap; flex-shrink: 0; }
+  .btn { padding: 0 12px; font-size: 0.8rem; height: 32px; min-width: 55px; display: flex; align-items: center; justify-content: center; }
 }
 
 /* 로비 & 모달 (변경 없음) */
