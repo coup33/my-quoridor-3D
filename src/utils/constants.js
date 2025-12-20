@@ -3,8 +3,8 @@
  * 서버와 클라이언트에서 공통으로 사용되는 설정값들
  */
 
-// 서버 연결 주소 (로컬 개발용)
-export const SOCKET_URL = 'http://localhost:3001';
+// 서버 연결 주소
+export const SOCKET_URL = 'https://my-quoridor.onrender.com';
 
 // 보드 설정
 export const BOARD_SIZE = 9;
