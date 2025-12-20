@@ -1,6 +1,6 @@
 /**
  * Quoridor 메인 앱 컴포넌트
- * 리팩토링된 버전 - 모듈화된 컴포넌트와 훅 사용
+ * 리팩토링된 버전 - 3D 모드 전용, 모듈화된 컴포넌트와 훅 사용
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -9,8 +9,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import './styles/index.css';
 
 // 컴포넌트
-import { Board, Board3D } from './components/Board';
-import { TimeBar, TurnIndicator, SidePanel, GameTitle } from './components/UI';
+import { Board3D } from './components/Board';
+import { TimeBar, TurnIndicator, GameTitle, PlayerInfo, ActionButtons } from './components/UI';
 import { LobbyOverlay } from './components/Lobby';
 import { GameOverModal, MenuModal, ResignConfirmModal } from './components/Modal';
 
@@ -19,12 +19,6 @@ import { useSocket } from './hooks/useSocket';
 import { useGameState } from './hooks/useGameState';
 import { useSound } from './hooks/useSound';
 import { useGameHandlers } from './hooks/useGameHandlers';
-
-// 유틸리티
-import { ACTION_MODES } from './utils/constants';
-
-// 3D 모드 상태
-const USE_3D_BOARD = true;
 
 function App() {
   // 로비 상태
@@ -55,7 +49,7 @@ function App() {
   const gameState = useGameState(myRole);
   const {
     player1, player2, turn, walls, winner, winReason,
-    p1Time, p2Time, lastMove, lastWall,
+    p1Time, p2Time, lastWall,
     actionMode, setActionMode, previewWall, setPreviewWall,
     syncWithServer, resetState, isMyTurn
   } = gameState;
@@ -109,6 +103,12 @@ function App() {
   const bottomTime = isFlipped ? p1Time : p2Time;
   const currentPlayer = turn === 1 ? player1 : player2;
 
+  // 플레이어 정보 계산 (myRole 기준)
+  const myPlayerNumber = myRole || 1;
+  const opponentPlayerNumber = myRole === 1 ? 2 : myRole === 2 ? 1 : 2;
+  const myWallCount = myRole === 1 ? player1.wallCount : myRole === 2 ? player2.wallCount : player1.wallCount;
+  const opponentWallCount = myRole === 1 ? player2.wallCount : myRole === 2 ? player1.wallCount : player2.wallCount;
+
   // 게임 핸들러 훅
   const {
     isMoveableCheck,
@@ -136,23 +136,18 @@ function App() {
   });
 
   // 상단 배지
-  const topBadge = useMemo(() => {
-    if (!isGameStarted) return null;
-    if (isSpectator) {
-      return <div className="status-badge badge-spectator">관전 모드</div>;
-    }
-    return <div className="status-badge badge-ingame">게임 중</div>;
-  }, [isGameStarted, isSpectator]);
+  const topBadge = !isGameStarted ? null : (
+    isSpectator
+      ? <div className="status-badge badge-spectator">관전 모드</div>
+      : <div className="status-badge badge-ingame">게임 중</div>
+  );
 
   // 기권 버튼
-  const resignButton = useMemo(() => {
-    if (isSpectator || winner || !isGameStarted) return null;
-    return (
-      <button className="status-badge badge-resign" onClick={openResignConfirm}>
-        항복
-      </button>
-    );
-  }, [isSpectator, winner, isGameStarted, openResignConfirm]);
+  const resignButton = (isSpectator || winner || !isGameStarted) ? null : (
+    <button className="status-badge badge-resign" onClick={openResignConfirm}>
+      항복
+    </button>
+  );
 
   // 턴 표시
   const turnIndicator = (
@@ -198,204 +193,121 @@ function App() {
 
       {/* 게임 영역 */}
       <div className={`game-wrapper ${!isGameStarted || winner ? 'blurred' : ''}`}>
-        {USE_3D_BOARD ? (
-          /* 3D 모드 */
-          <main className={`main-content-3d ${isMobileLayout ? 'mobile-mode' : 'desktop-mode'}`}>
-            {/* 3D 보드 컨테이너 */}
-            <div className="board-fullscreen-3d">
-              {/* 상단 타임바 영역 (모바일) */}
-              <div className="mobile-top-bar">
-                <div className={`mobile-opponent-info ${turn !== myRole ? 'active' : ''}`}>
-                  {myRole ? (
-                    <>
-                      <span className="player-icon">{myRole === 1 ? '⬛' : '⬜'}</span>
-                      <span className="player-walls">{myRole === 1 ? player2.wallCount : player1.wallCount}개</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="player-icon">⬛</span>
-                      <span className="player-walls">{player2.wallCount}개</span>
-                    </>
-                  )}
-                </div>
-                <div className="mobile-timebar-area">
-                  <div className="floating-turn-indicator">{turnIndicator}</div>
-                  <TimeBar time={topTime} />
-                </div>
-              </div>
-
-              {/* 3D 보드 */}
-              <div className="board-3d-inner">
-                <Board3D
-                  player1={player1}
-                  player2={player2}
-                  walls={walls}
-                  lastWall={lastWall}
-                  isFlipped={isFlipped}
-                  isMyTurn={isMyTurn}
-                  actionMode={actionMode}
-                  previewWall={previewWall}
-                  onCellClick={handleCellClick}
-                  onWallClick={handleWallClick}
-                  isMoveableCheck={isMoveableCheck}
-                  canPlaceWallCheck={canPlaceWallCheck}
-                />
-              </div>
-
-              {/* 하단 타임바 영역 (모바일) */}
-              <div className="mobile-bottom-bar">
-                <TimeBar time={bottomTime} />
-                <div className="mobile-my-controls">
-                  <div className={`mobile-my-info ${turn === myRole ? 'active' : ''}`}>
-                    {myRole ? (
-                      <>
-                        <span className="player-icon">{myRole === 1 ? '⬜' : '⬛'}</span>
-                        <span className="player-walls">{myRole === 1 ? player1.wallCount : player2.wallCount}개</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="player-icon">⬜</span>
-                        <span className="player-walls">{player1.wallCount}개</span>
-                      </>
-                    )}
-                  </div>
-                  {myRole && (
-                    <div className="mobile-action-buttons">
-                      <button
-                        className={`floating-action-btn ${actionMode === ACTION_MODES.MOVE ? 'active' : ''}`}
-                        onClick={() => setActionMode(ACTION_MODES.MOVE)}
-                        disabled={!isMyTurn || winner}
-                      >
-                        이동
-                      </button>
-                      <button
-                        className={`floating-action-btn ${actionMode === ACTION_MODES.WALL ? 'active' : ''}`}
-                        onClick={() => setActionMode(ACTION_MODES.WALL)}
-                        disabled={!isMyTurn || winner || currentPlayer.wallCount <= 0}
-                      >
-                        벽
-                      </button>
-                    </div>
-                  )}
-                </div>
+        <main className={`main-content-3d ${isMobileLayout ? 'mobile-mode' : 'desktop-mode'}`}>
+          {/* 3D 보드 컨테이너 */}
+          <div className="board-fullscreen-3d">
+            {/* 상단 타임바 영역 (모바일) */}
+            <div className="mobile-top-bar">
+              <PlayerInfo
+                playerNumber={opponentPlayerNumber}
+                wallCount={opponentWallCount}
+                isActive={turn !== myRole}
+                className="mobile-opponent-info"
+              />
+              <div className="mobile-timebar-area">
+                <div className="floating-turn-indicator">{turnIndicator}</div>
+                <TimeBar time={topTime} />
               </div>
             </div>
 
-            {/* 플로팅 UI - 좌측 (데스크탑) */}
-            <div className="floating-panel floating-left desktop-only">
-              {myRole ? (
-                <div className={`floating-player-info ${turn !== myRole ? 'active' : ''}`}>
-                  <span className="player-icon">{myRole === 1 ? '⬛' : '⬜'}</span>
-                  <span className="player-walls">{myRole === 1 ? player2.wallCount : player1.wallCount}개</span>
-                </div>
-              ) : (
-                <div className={`floating-player-info ${turn === 2 ? 'active' : ''}`}>
-                  <span className="player-icon">⬛</span>
-                  <span className="player-walls">{player2.wallCount}개</span>
-                </div>
-              )}
+            {/* 3D 보드 */}
+            <div className="board-3d-inner">
+              <Board3D
+                player1={player1}
+                player2={player2}
+                walls={walls}
+                lastWall={lastWall}
+                isFlipped={isFlipped}
+                isMyTurn={isMyTurn}
+                actionMode={actionMode}
+                previewWall={previewWall}
+                onCellClick={handleCellClick}
+                onWallClick={handleWallClick}
+                isMoveableCheck={isMoveableCheck}
+                canPlaceWallCheck={canPlaceWallCheck}
+              />
             </div>
 
-            {/* 플로팅 UI - 상단 (데스크탑) */}
-            <div className="floating-timebar-top desktop-only">
-              <div className="floating-turn-indicator">{turnIndicator}</div>
-              <TimeBar time={topTime} />
-            </div>
-
-            {/* 플로팅 UI - 하단 (데스크탑) */}
-            <div className="floating-timebar-bottom desktop-only">
+            {/* 하단 타임바 영역 (모바일) */}
+            <div className="mobile-bottom-bar">
               <TimeBar time={bottomTime} />
-            </div>
-
-            {/* 플로팅 UI - 우측 (데스크탑) */}
-            <div className="floating-panel floating-right desktop-only">
-              {myRole ? (
-                <>
-                  <div className={`floating-player-info my-info ${turn === myRole ? 'active' : ''}`}>
-                    <span className="player-icon">{myRole === 1 ? '⬜' : '⬛'}</span>
-                    <span className="player-walls">{myRole === 1 ? player1.wallCount : player2.wallCount}개</span>
-                  </div>
-                  <div className="floating-action-row">
-                    <button
-                      className={`floating-action-btn ${actionMode === ACTION_MODES.MOVE ? 'active' : ''}`}
-                      onClick={() => setActionMode(ACTION_MODES.MOVE)}
-                      disabled={!isMyTurn || winner}
-                    >
-                      이동
-                    </button>
-                    <button
-                      className={`floating-action-btn ${actionMode === ACTION_MODES.WALL ? 'active' : ''}`}
-                      onClick={() => setActionMode(ACTION_MODES.WALL)}
-                      disabled={!isMyTurn || winner || currentPlayer.wallCount <= 0}
-                    >
-                      벽
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className={`floating-player-info ${turn === 1 ? 'active' : ''}`}>
-                  <span className="player-icon">⬜</span>
-                  <span className="player-walls">{player1.wallCount}개</span>
-                </div>
-              )}
-            </div>
-
-            {/* 플로팅 UI - 좌측 하단 배지 */}
-            <div className="floating-panel floating-bottom-left-badge">
-              {topBadge}
-              {resignButton}
-            </div>
-          </main>
-        ) : (
-          /* 2D 모드 */
-          <main className="main-content">
-            <SidePanel
-              player={player1}
-              playerNumber={1}
-              isActive={turn === 1}
-              isMyRole={myRole === 1}
-              isMyTurn={isMyTurn && turn === 1}
-              winner={winner}
-              actionMode={actionMode}
-              onActionModeChange={setActionMode}
-              style={{ order: isFlipped ? 3 : 1 }}
-            />
-
-            <section className="board-section" style={{ order: 2 }}>
-              <TimeBar time={topTime} left={topBadge} center={turnIndicator} right={resignButton} />
-              <div className="board-container">
-                <Board
-                  player1={player1}
-                  player2={player2}
-                  walls={walls}
-                  lastMove={lastMove}
-                  lastWall={lastWall}
-                  isFlipped={isFlipped}
-                  isMyTurn={isMyTurn}
-                  actionMode={actionMode}
-                  previewWall={previewWall}
-                  onCellClick={handleCellClick}
-                  onWallClick={handleWallClick}
-                  isMoveableCheck={isMoveableCheck}
-                  canPlaceWallCheck={canPlaceWallCheck}
+              <div className="mobile-my-controls">
+                <PlayerInfo
+                  playerNumber={myPlayerNumber}
+                  wallCount={myWallCount}
+                  isActive={turn === myRole}
+                  className="mobile-my-info"
                 />
+                {myRole && (
+                  <ActionButtons
+                    actionMode={actionMode}
+                    onActionModeChange={setActionMode}
+                    isMyTurn={isMyTurn}
+                    winner={winner}
+                    wallCount={currentPlayer.wallCount}
+                    className="mobile-action-buttons"
+                  />
+                )}
               </div>
-              <TimeBar time={bottomTime} />
-            </section>
+            </div>
+          </div>
 
-            <SidePanel
-              player={player2}
-              playerNumber={2}
-              isActive={turn === 2}
-              isMyRole={myRole === 2}
-              isMyTurn={isMyTurn && turn === 2}
-              winner={winner}
-              actionMode={actionMode}
-              onActionModeChange={setActionMode}
-              style={{ order: isFlipped ? 1 : 3 }}
+          {/* 플로팅 UI - 좌측 (데스크탑) */}
+          <div className="floating-panel floating-left desktop-only">
+            <PlayerInfo
+              playerNumber={opponentPlayerNumber}
+              wallCount={opponentWallCount}
+              isActive={myRole ? turn !== myRole : turn === 2}
+              className="floating-player-info"
             />
-          </main>
-        )}
+          </div>
+
+          {/* 플로팅 UI - 상단 (데스크탑) */}
+          <div className="floating-timebar-top desktop-only">
+            <div className="floating-turn-indicator">{turnIndicator}</div>
+            <TimeBar time={topTime} />
+          </div>
+
+          {/* 플로팅 UI - 하단 (데스크탑) */}
+          <div className="floating-timebar-bottom desktop-only">
+            <TimeBar time={bottomTime} />
+          </div>
+
+          {/* 플로팅 UI - 우측 (데스크탑) */}
+          <div className="floating-panel floating-right desktop-only">
+            {myRole ? (
+              <>
+                <PlayerInfo
+                  playerNumber={myPlayerNumber}
+                  wallCount={myWallCount}
+                  isActive={turn === myRole}
+                  className="floating-player-info my-info"
+                />
+                <ActionButtons
+                  actionMode={actionMode}
+                  onActionModeChange={setActionMode}
+                  isMyTurn={isMyTurn}
+                  winner={winner}
+                  wallCount={currentPlayer.wallCount}
+                  className="floating-action-row"
+                />
+              </>
+            ) : (
+              <PlayerInfo
+                playerNumber={1}
+                wallCount={player1.wallCount}
+                isActive={turn === 1}
+                className="floating-player-info"
+              />
+            )}
+          </div>
+
+          {/* 플로팅 UI - 좌측 하단 배지 */}
+          <div className="floating-panel floating-bottom-left-badge">
+            {topBadge}
+            {resignButton}
+          </div>
+        </main>
       </div>
 
       {/* 게임 종료 모달 */}
