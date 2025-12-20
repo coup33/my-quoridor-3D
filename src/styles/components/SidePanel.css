@@ -1,0 +1,43 @@
+/**
+ * 사이드 패널 컴포넌트 스타일
+ * GPU 가속 최적화 버전
+ */
+
+/* 패널 텍스트 색상 */
+.t-white {
+    color: var(--color-text-primary);
+}
+
+.t-black {
+    color: var(--color-text-secondary);
+}
+
+/* 플레이어 버튼 스타일 - 깜빡임 방지 */
+.p1-btn,
+.p2-btn {
+    background: rgba(40, 40, 60, 0.8);
+    color: var(--color-text-primary);
+    border: 1px solid var(--glass-border);
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    will-change: background-color, box-shadow;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+}
+
+.p1-btn:hover,
+.p2-btn:hover {
+    background: rgba(60, 60, 80, 0.9);
+    box-shadow: var(--shadow-md);
+}
+
+.p1-btn.selected {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.p2-btn.selected {
+    background: linear-gradient(135deg, rgba(60, 60, 60, 0.8), rgba(40, 40, 40, 0.8));
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 20px rgba(100, 100, 100, 0.4);
+}

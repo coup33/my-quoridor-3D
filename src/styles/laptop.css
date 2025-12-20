@@ -1,0 +1,57 @@
+/**
+ * 노트북 전용 스타일
+ * 화면 높이 900px 이하, 너비 769px 이상
+ */
+
+@media (max-height: 900px) and (min-width: 769px) {
+
+    /* CSS 변수 오버라이드 */
+    :root {
+        --cell-size: 42px;
+        --gap-size: 6px;
+        --pawn-size: 30px;
+        --wall-thickness: 8px;
+    }
+
+    /* 게임 타이틀 */
+    .game-title {
+        font-size: var(--font-size-2xl) !important;
+        left: 10px !important;
+    }
+
+    /* 타임바 */
+    .time-bar-wrapper {
+        margin-top: 30px !important;
+        margin-bottom: var(--spacing-xs) !important;
+        height: var(--timer-height-mobile) !important;
+    }
+
+    /* 상태 배지 */
+    .status-badge {
+        top: -25px !important;
+        font-size: 0.7rem !important;
+    }
+
+    /* 턴 표시 */
+    .turn-display {
+        font-size: var(--font-size-lg) !important;
+        margin-bottom: 2px !important;
+    }
+
+    /* 사이드 패널 */
+    .side-panel {
+        width: var(--panel-width-laptop) !important;
+        padding: 10px !important;
+    }
+
+    /* 카운터 */
+    .count {
+        font-size: 1.2rem !important;
+    }
+
+    /* 버튼 */
+    .btn {
+        padding: var(--spacing-sm) !important;
+        font-size: var(--font-size-md) !important;
+    }
+}

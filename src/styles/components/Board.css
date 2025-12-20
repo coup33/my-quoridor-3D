@@ -1,0 +1,264 @@
+/**
+ * 보드 컴포넌트 스타일
+ * 모던 글라스모피즘 + 3D 효과
+ */
+
+/* 보드 - 글라스 효과 */
+.board {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(9, var(--cell-size));
+    grid-template-rows: repeat(9, var(--cell-size));
+    gap: var(--gap-size);
+    transition: transform var(--transition-slow);
+    transform-style: preserve-3d;
+    /* 글라스 바닥면 */
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.05) 0%,
+            rgba(255, 255, 255, 0.02) 100%);
+    padding: 6px;
+    border-radius: var(--border-radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 셀 - 글라스 3D 돌출 효과 (무채색 계열) */
+.cell {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    /* 회색 글라스 그라디언트 */
+    background: linear-gradient(145deg,
+            rgba(120, 120, 130, 0.4) 0%,
+            rgba(80, 80, 90, 0.35) 50%,
+            rgba(100, 100, 110, 0.38) 100%);
+    border: 1px solid rgba(180, 180, 190, 0.2);
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+    /* 글라시한 3D 효과 */
+    box-shadow:
+        /* 상단 글로우 */
+        inset 0 1px 1px rgba(255, 255, 255, 0.2),
+        /* 하단 부드러운 그림자 */
+        inset 0 -1px 2px rgba(0, 0, 0, 0.2),
+        /* 외부 소프트 섀도우 */
+        0 2px 8px rgba(0, 0, 0, 0.25),
+        0 1px 3px rgba(0, 0, 0, 0.15);
+    transform: translateZ(0);
+}
+
+.cell:hover {
+    background: linear-gradient(145deg,
+            rgba(140, 140, 150, 0.45) 0%,
+            rgba(100, 100, 110, 0.4) 50%,
+            rgba(120, 120, 130, 0.42) 100%);
+    border-color: rgba(200, 200, 210, 0.3);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.3),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.2),
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        0 0 15px rgba(255, 255, 255, 0.03);
+}
+
+.cell.highlight {
+    background: linear-gradient(145deg,
+            rgba(0, 180, 220, 0.4) 0%,
+            rgba(0, 150, 190, 0.3) 50%,
+            rgba(0, 165, 205, 0.35) 100%) !important;
+    border-color: rgba(0, 212, 255, 0.5) !important;
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.4),
+        inset 0 -1px 2px rgba(0, 100, 150, 0.2),
+        0 0 20px rgba(0, 212, 255, 0.4),
+        0 0 40px rgba(0, 212, 255, 0.2),
+        0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    animation: glow 2s ease-in-out infinite;
+}
+
+/* 말 (Pawn) - 체스 폰 스타일 3D 효과 */
+.pawn {
+    width: var(--pawn-size);
+    height: var(--pawn-size);
+    border-radius: var(--border-radius-full);
+    z-index: var(--z-index-pawn);
+    transition: all var(--transition-fast);
+    position: relative;
+    /* 타원형 그림자로 바닥에 붙은 느낌 */
+    filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.4));
+}
+
+/* 말 받침대 효과 - ::before로 구현 */
+.pawn::before {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    height: 6px;
+    background: inherit;
+    border-radius: 50%;
+    opacity: 0.7;
+    filter: blur(1px);
+}
+
+/* 백돌 - 3D 체스 폰 스타일 */
+.white-pawn {
+    background:
+        /* 구형 반사광 */
+        radial-gradient(ellipse 60% 40% at 35% 25%, rgba(255, 255, 255, 0.9) 0%, transparent 50%),
+        /* 가장자리 어둡게 */
+        radial-gradient(ellipse at center, #ffffff 0%, #e8e8e8 40%, #c0c0c0 80%, #a0a0a0 100%);
+    box-shadow:
+        /* 외부 그림자 */
+        0 6px 12px rgba(0, 0, 0, 0.4),
+        0 3px 6px rgba(0, 0, 0, 0.3),
+        /* 내부 상단 하이라이트 */
+        inset 0 8px 15px rgba(255, 255, 255, 0.8),
+        /* 내부 하단 그림자 */
+        inset 0 -8px 15px rgba(0, 0, 0, 0.2),
+        /* 가장자리 그림자 */
+        inset 4px 0 8px rgba(0, 0, 0, 0.1),
+        inset -4px 0 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* 백돌 상단 하이라이트 */
+.white-pawn::after {
+    content: '';
+    position: absolute;
+    top: 12%;
+    left: 18%;
+    width: 35%;
+    height: 30%;
+    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.9) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: rotate(-30deg);
+}
+
+/* 흑돌 - 3D 체스 폰 스타일 */
+.black-pawn {
+    background:
+        /* 구형 반사광 */
+        radial-gradient(ellipse 60% 40% at 35% 25%, rgba(120, 120, 120, 0.6) 0%, transparent 50%),
+        /* 가장자리 밝게 */
+        radial-gradient(ellipse at center, #4a4a4a 0%, #353535 40%, #252525 80%, #1a1a1a 100%);
+    box-shadow:
+        /* 외부 그림자 */
+        0 6px 12px rgba(0, 0, 0, 0.6),
+        0 3px 6px rgba(0, 0, 0, 0.4),
+        /* 내부 상단 하이라이트 */
+        inset 0 8px 15px rgba(255, 255, 255, 0.15),
+        /* 내부 하단 그림자 */
+        inset 0 -8px 15px rgba(0, 0, 0, 0.5),
+        /* 가장자리 그림자 */
+        inset 4px 0 8px rgba(0, 0, 0, 0.3),
+        inset -4px 0 8px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(80, 80, 80, 0.5);
+}
+
+/* 흑돌 상단 하이라이트 */
+.black-pawn::after {
+    content: '';
+    position: absolute;
+    top: 12%;
+    left: 18%;
+    width: 35%;
+    height: 30%;
+    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: rotate(-30deg);
+}
+
+/* 잔상 (Ghost) - 투명 효과 */
+.ghost-pawn {
+    width: var(--pawn-size);
+    height: var(--pawn-size);
+    border-radius: var(--border-radius-full);
+    position: absolute;
+    z-index: var(--z-index-ghost);
+    opacity: 0.35;
+    pointer-events: none;
+    transform: scale(0.85);
+}
+
+.ghost-white {
+    background: rgba(255, 255, 255, 0.4);
+    border: 2px dashed rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+.ghost-black {
+    background: rgba(40, 40, 40, 0.4);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+}
+
+/* 이동 가능 점 */
+.move-dot {
+    width: 30%;
+    height: 30%;
+    background: radial-gradient(circle, var(--color-accent) 0%, transparent 70%);
+    border-radius: var(--border-radius-full);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* 벽 타겟 (설치 가능 영역) */
+.wall-target {
+    position: absolute;
+    z-index: var(--z-index-wall-target);
+    transition: all var(--transition-fast);
+    border-radius: var(--border-radius-sm);
+}
+
+.wall-target.in-wall-mode {
+    cursor: pointer;
+}
+
+.wall-target.placeable:hover {
+    background: var(--color-wall-placeable);
+    box-shadow: 0 0 15px var(--color-accent-glow);
+}
+
+.wall-target.preview {
+    background: var(--color-wall-preview) !important;
+    box-shadow: 0 0 20px var(--color-accent-glow) !important;
+    z-index: var(--z-index-wall-preview);
+}
+
+/* 가로/세로 벽 타겟 크기 */
+.wall-target.h,
+.placed-wall.h {
+    width: var(--wall-length);
+    height: var(--wall-thickness);
+}
+
+.wall-target.v,
+.placed-wall.v {
+    width: var(--wall-thickness);
+    height: var(--wall-length);
+}
+
+/* 설치된 벽 - 3D 네온 효과 */
+.placed-wall {
+    position: absolute;
+    background: var(--color-wall);
+    z-index: var(--z-index-wall-placed);
+    border-radius: var(--border-radius-sm);
+    box-shadow:
+        var(--color-wall-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.placed-wall.latest {
+    background: var(--color-wall-latest) !important;
+    box-shadow: var(--color-wall-latest-glow) !important;
+    animation: wallPulse 2s infinite;
+    z-index: var(--z-index-wall-latest);
+}

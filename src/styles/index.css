@@ -1,0 +1,30 @@
+/**
+ * 메인 스타일 엔트리 포인트
+ * 모든 CSS 파일을 이곳에서 임포트
+ * 
+ * 순서 중요:
+ * 1. variables - CSS 변수 정의
+ * 2. base - 기본 스타일
+ * 3. components - 컴포넌트별 스타일
+ * 4. desktop - 데스크탑 미디어 쿼리
+ * 5. laptop - 노트북 미디어 쿼리
+ * 6. mobile - 모바일 미디어 쿼리
+ */
+
+/* 디자인 토큰 */
+@import './variables.css';
+
+/* 기본 스타일 */
+@import './base.css';
+
+/* 컴포넌트 스타일 */
+@import './components/Board.css';
+@import './components/TimeBar.css';
+@import './components/SidePanel.css';
+@import './components/Lobby.css';
+@import './components/Modal.css';
+
+/* 디바이스별 스타일 (미디어 쿼리) */
+@import './desktop.css';
+@import './laptop.css';
+@import './mobile.css';

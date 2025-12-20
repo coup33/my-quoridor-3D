@@ -1,0 +1,166 @@
+/**
+ * 데스크탑 전용 스타일
+ * 3D 글라스모피즘 테마
+ */
+
+@media (min-width: 1025px) {
+
+    /* 게임 타이틀 - 네온 효과 */
+    .game-title {
+        font-weight: var(--font-weight-extrabold);
+        letter-spacing: 8px;
+        text-transform: uppercase;
+        position: fixed;
+        left: var(--spacing-lg);
+        top: 50%;
+        transform: translateY(-50%);
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+        z-index: var(--z-index-title);
+        margin: 0;
+        font-size: var(--font-size-3xl);
+        background: var(--color-accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        filter: drop-shadow(0 0 20px var(--color-accent-glow));
+    }
+
+    /* 메뉴 플로팅 버튼 - GPU 최적화 */
+    .menu-float {
+        position: fixed;
+        bottom: var(--spacing-lg);
+        left: var(--spacing-lg);
+        padding: 12px 24px;
+        background: rgba(30, 30, 50, 0.95);
+        color: var(--color-text-primary);
+        border: 1px solid var(--glass-border);
+        border-radius: 30px;
+        font-weight: var(--font-weight-bold);
+        letter-spacing: 2px;
+        cursor: pointer;
+        box-shadow: var(--shadow-md);
+        z-index: var(--z-index-menu);
+        transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        will-change: background-color, box-shadow;
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+    }
+
+    .menu-float:hover {
+        background: rgba(50, 50, 70, 0.98);
+        border-color: var(--color-accent);
+        box-shadow: 0 0 20px var(--color-accent-glow);
+    }
+
+    /* 사이드 패널 - GPU 최적화 */
+    .side-panel {
+        width: var(--panel-width);
+        padding: var(--spacing-lg);
+        background: rgba(25, 25, 45, 0.95);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--border-radius-xl);
+        text-align: center;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: var(--shadow-lg), var(--shadow-inset-glow);
+        position: relative;
+        overflow: hidden;
+        will-change: box-shadow;
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+    }
+
+    .side-panel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    }
+
+    .side-panel.active {
+        border: 2px solid var(--color-accent);
+        box-shadow:
+            0 0 30px var(--color-accent-glow),
+            var(--shadow-lg);
+    }
+
+    /* 벽 카운터 - GPU 최적화 */
+    .wall-counter {
+        background: rgba(35, 35, 55, 0.9);
+        padding: var(--spacing-md);
+        border-radius: var(--border-radius-lg);
+        margin-bottom: var(--spacing-md);
+        font-size: var(--font-size-md);
+        border: 1px solid var(--border-color);
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+    }
+
+    .count {
+        font-size: var(--font-size-2xl);
+        font-weight: var(--font-weight-bold);
+        background: var(--color-accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: block;
+        margin-top: var(--spacing-xs);
+    }
+
+    /* 버튼 그룹 */
+    .button-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    /* 보드 섹션 */
+    .board-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: auto;
+        height: 100%;
+    }
+
+    /* 보드 컨테이너 - 3D 글라스 */
+    .board-container {
+        padding: var(--spacing-lg);
+        background: var(--glass-bg);
+        backdrop-filter: var(--blur-md);
+        -webkit-backdrop-filter: var(--blur-md);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--border-radius-xl);
+        box-shadow:
+            var(--shadow-xl),
+            var(--shadow-inset-glow),
+            0 0 50px rgba(0, 0, 0, 0.3);
+        flex-shrink: 0;
+        position: relative;
+        transform: var(--board-transform);
+        transform-style: preserve-3d;
+    }
+
+    .board-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        border-radius: var(--border-radius-xl) var(--border-radius-xl) 0 0;
+    }
+
+    /* 타임바 */
+    .time-bar-container {
+        width: 95%;
+        max-width: 520px;
+        margin: var(--spacing-md) 0;
+        margin-top: var(--spacing-lg);
+    }
+}

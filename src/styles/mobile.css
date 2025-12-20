@@ -1,0 +1,198 @@
+/**
+ * 모바일 전용 스타일
+ * 3D 글라스모피즘 테마
+ */
+
+@media (max-width: 768px) {
+
+    /* CSS 변수 오버라이드 - vmin 단위 사용 */
+    :root {
+        --cell-size: 8.0vmin;
+        --gap-size: 1vmin;
+        --pawn-size: 5.5vmin;
+        --wall-thickness: 1.3vmin;
+        --board-rotate-x: 0deg;
+        /* 모바일에서는 3D 효과 제거 */
+    }
+
+    /* 컨테이너 */
+    .container {
+        justify-content: center;
+        align-items: center;
+        padding-top: 0 !important;
+    }
+
+    /* 게임 타이틀 - 가로 배치 */
+    .game-title {
+        position: relative;
+        top: auto;
+        left: auto;
+        transform: none;
+        writing-mode: horizontal-tb;
+        width: 100%;
+        text-align: center;
+        margin-top: 8px;
+        margin-bottom: 5vh;
+        font-size: var(--font-size-xl);
+        letter-spacing: 4px;
+        z-index: 50;
+        font-weight: var(--font-weight-extrabold);
+        text-transform: uppercase;
+        background: var(--color-accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        filter: drop-shadow(0 0 10px var(--color-accent-glow));
+    }
+
+    /* 메뉴 플로팅 버튼 - 오른쪽 상단 */
+    .menu-float {
+        position: absolute;
+        top: 20px;
+        right: var(--spacing-md);
+        bottom: auto;
+        left: auto;
+        padding: 8px 16px;
+        font-size: var(--font-size-sm);
+        z-index: var(--z-index-menu-float);
+        background: var(--glass-bg);
+        backdrop-filter: var(--blur-sm);
+        -webkit-backdrop-filter: var(--blur-sm);
+        color: var(--color-text-primary);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        font-weight: var(--font-weight-bold);
+        letter-spacing: 1px;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* 게임 래퍼 */
+    .game-wrapper {
+        align-items: flex-start;
+        padding-top: 0;
+    }
+
+    /* 메인 콘텐츠 - 스택형 레이아웃 */
+    .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: 0;
+        width: 100%;
+        height: auto;
+    }
+
+    /* 사이드 패널 - 가로형 */
+    .side-panel {
+        width: 92%;
+        max-width: 340px;
+        height: var(--panel-height-mobile);
+        padding: 0 var(--spacing-md);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 0 auto;
+        flex-shrink: 0;
+        white-space: nowrap;
+        position: relative;
+        bottom: auto;
+        left: auto;
+        transform: none;
+        background: var(--glass-bg);
+        backdrop-filter: var(--blur-sm);
+        -webkit-backdrop-filter: var(--blur-sm);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-md);
+    }
+
+    .side-panel.active {
+        border: 2px solid var(--color-accent);
+        box-shadow: 0 0 20px var(--color-accent-glow);
+    }
+
+    /* 보드 섹션 */
+    .board-section {
+        flex-shrink: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* 보드 컨테이너 */
+    .board-container {
+        padding: var(--spacing-md);
+        background: var(--glass-bg);
+        backdrop-filter: var(--blur-sm);
+        -webkit-backdrop-filter: var(--blur-sm);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-lg);
+        flex-shrink: 0;
+    }
+
+    /* 타임바 */
+    .time-bar-container {
+        width: 92%;
+        max-width: 340px;
+        margin-top: var(--spacing-xs);
+        margin-bottom: var(--spacing-xs);
+        flex-shrink: 0;
+    }
+
+    .time-bar-track {
+        height: var(--timer-height-mobile);
+    }
+
+    .status-badge {
+        font-size: var(--font-size-xs);
+        padding: 3px 8px;
+    }
+
+    /* 벽 카운터 */
+    .wall-counter {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        font-size: var(--font-size-md);
+        border: none;
+        backdrop-filter: none;
+    }
+
+    .count {
+        display: inline;
+        font-size: 1.2rem;
+        margin-left: 6px;
+        font-weight: var(--font-weight-bold);
+        background: var(--color-accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* 버튼 그룹 */
+    .button-group {
+        display: flex;
+        flex-direction: row;
+        gap: var(--spacing-sm);
+        flex-wrap: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* 버튼 */
+    .btn {
+        padding: 0 var(--spacing-md);
+        font-size: var(--font-size-sm);
+        height: 34px;
+        min-width: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
