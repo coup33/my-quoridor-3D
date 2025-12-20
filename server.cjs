@@ -51,7 +51,7 @@ const isBlocked = (cx, cy, tx, ty, walls) => {
   return false;
 };
 
-const getPathData = (startNode, targetRow, currentWalls) => {
+const getPathData = (startNode, targetRow, currentWalls, opponentPos = null) => {
   const queue = [{ x: startNode.x, y: startNode.y, dist: 0, parent: null }];
   const visited = new Set();
   visited.add(`${startNode.x},${startNode.y}`);
@@ -72,9 +72,42 @@ const getPathData = (startNode, targetRow, currentWalls) => {
       const nx = current.x + dir.dx;
       const ny = current.y + dir.dy;
       if (inBoard(nx, ny)) {
+        // 상대방 위치 체크 - 상대가 있으면 점프 고려
+        const isOpponentHere = opponentPos && nx === opponentPos.x && ny === opponentPos.y;
+
         if (!visited.has(`${nx},${ny}`) && !isBlocked(current.x, current.y, nx, ny, currentWalls)) {
-          visited.add(`${nx},${ny}`);
-          queue.push({ x: nx, y: ny, dist: current.dist + 1, parent: current });
+          if (isOpponentHere) {
+            // 상대방이 있는 경우: 점프 시도
+            const jumpX = nx + dir.dx;
+            const jumpY = ny + dir.dy;
+
+            // 직선 점프 가능한지 확인
+            if (inBoard(jumpX, jumpY) && !isBlocked(nx, ny, jumpX, jumpY, currentWalls)) {
+              if (!visited.has(`${jumpX},${jumpY}`)) {
+                visited.add(`${jumpX},${jumpY}`);
+                queue.push({ x: jumpX, y: jumpY, dist: current.dist + 1, parent: current });
+              }
+            } else {
+              // 직선 점프 불가 시 대각선 이동 시도
+              const diagonals = [
+                { dx: dir.dy, dy: dir.dx },  // 90도 회전
+                { dx: -dir.dy, dy: -dir.dx } // -90도 회전
+              ];
+              for (let diag of diagonals) {
+                const diagX = nx + diag.dx;
+                const diagY = ny + diag.dy;
+                if (inBoard(diagX, diagY) && !isBlocked(nx, ny, diagX, diagY, currentWalls)) {
+                  if (!visited.has(`${diagX},${diagY}`)) {
+                    visited.add(`${diagX},${diagY}`);
+                    queue.push({ x: diagX, y: diagY, dist: current.dist + 1, parent: current });
+                  }
+                }
+              }
+            }
+          } else {
+            visited.add(`${nx},${ny}`);
+            queue.push({ x: nx, y: ny, dist: current.dist + 1, parent: current });
+          }
         }
       }
     }
@@ -103,8 +136,58 @@ const isValidWall = (x, y, orientation, currentWalls, p1Pos, p2Pos) => {
   return p1Path !== null && p2Path !== null;
 };
 
+// 폰의 유효한 이동 목록 반환 (점프, 대각선 이동 포함)
+const getValidMovesForPawn = (pawnPos, opponentPos, walls) => {
+  const validMoves = [];
+  const directions = [
+    { dx: 0, dy: -1 }, // 위
+    { dx: 0, dy: 1 },  // 아래
+    { dx: -1, dy: 0 }, // 왼쪽
+    { dx: 1, dy: 0 }   // 오른쪽
+  ];
 
-// --- AI Logic ---
+  for (let dir of directions) {
+    const nx = pawnPos.x + dir.dx;
+    const ny = pawnPos.y + dir.dy;
+
+    if (!inBoard(nx, ny)) continue;
+    if (isBlocked(pawnPos.x, pawnPos.y, nx, ny, walls)) continue;
+
+    // 상대방이 해당 칸에 있는지 확인
+    const isOpponentHere = nx === opponentPos.x && ny === opponentPos.y;
+
+    if (isOpponentHere) {
+      // 점프 시도: 상대방 너머로 이동
+      const jumpX = nx + dir.dx;
+      const jumpY = ny + dir.dy;
+
+      if (inBoard(jumpX, jumpY) && !isBlocked(nx, ny, jumpX, jumpY, walls)) {
+        // 직선 점프 가능
+        validMoves.push({ x: jumpX, y: jumpY });
+      } else {
+        // 직선 점프 불가 시 대각선 이동
+        const diagonals = [
+          { dx: dir.dy, dy: dir.dx },   // 90도 회전
+          { dx: -dir.dy, dy: -dir.dx }  // -90도 회전
+        ];
+        for (let diag of diagonals) {
+          const diagX = nx + diag.dx;
+          const diagY = ny + diag.dy;
+          if (inBoard(diagX, diagY) && !isBlocked(nx, ny, diagX, diagY, walls)) {
+            validMoves.push({ x: diagX, y: diagY });
+          }
+        }
+      }
+    } else {
+      // 빈 칸으로 이동
+      validMoves.push({ x: nx, y: ny });
+    }
+  }
+
+  return validMoves;
+};
+
+
 const processAIMove = () => {
   if (gameState.winner) return;
 
@@ -119,10 +202,11 @@ const processAIMove = () => {
     let moveAction = null;
     let wallAction = null;
 
-    const myPathData = getPathData(p2Pos, 0, walls);
-    const oppPathData = getPathData(p1Pos, 8, walls);
+    // 상대방 위치를 고려한 경로 탐색
+    const myPathData = getPathData(p2Pos, 0, walls, p1Pos);
+    const oppPathData = getPathData(p1Pos, 8, walls, p2Pos);
 
-    // AI 난이도별 로직 (기존 유지)
+    // AI 난이도별 로직
     if (difficulty === 1) {
       if (myPathData?.nextStep) moveAction = myPathData.nextStep;
     } else if (difficulty === 2) {
@@ -165,18 +249,13 @@ const processAIMove = () => {
     // 기본 이동 (최단 경로)
     if (!moveAction && !wallAction && myPathData?.nextStep) moveAction = myPathData.nextStep;
 
-    // 비상 이동 (랜덤)
+    // 비상 이동 (랜덤) - 상대방 위치도 고려
     if (!moveAction && !wallAction) {
-      const neighbors = [
-        { x: p2Pos.x, y: p2Pos.y - 1 }, { x: p2Pos.x, y: p2Pos.y + 1 },
-        { x: p2Pos.x - 1, y: p2Pos.y }, { x: p2Pos.x + 1, y: p2Pos.y }
-      ];
-      neighbors.sort(() => Math.random() - 0.5);
-      for (let n of neighbors) {
-        if (inBoard(n.x, n.y) && !isBlocked(p2Pos.x, p2Pos.y, n.x, n.y, walls)) {
-          moveAction = n;
-          break;
-        }
+      const validMoves = getValidMovesForPawn(p2Pos, p1Pos, walls);
+      if (validMoves.length > 0) {
+        // 목표(y=0)에 가장 가까운 이동 선택
+        validMoves.sort((a, b) => a.y - b.y);
+        moveAction = validMoves[0];
       }
     }
 
