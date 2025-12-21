@@ -5,8 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 
-// 스타일
-import './styles/index.css';
+// 스타일은 main.jsx에서 index.css로 import됨
 
 // 컴포넌트
 import { Board3D } from './components/Board';
@@ -31,6 +30,9 @@ function App() {
 
   // 모바일 레이아웃 감지
   const [isMobileLayout, setIsMobileLayout] = useState(false);
+
+  // 보드 경계 정보 (모바일에서 상단 UI 위치 조정에 사용)
+  const [boardBounds, setBoardBounds] = useState({ topY: 0, width: 0, cameraY: 14 });
 
   useEffect(() => {
     const checkMobileLayout = () => {
@@ -236,6 +238,8 @@ function App() {
                 onWallClick={handleWallClick}
                 isMoveableCheck={isMoveableCheck}
                 canPlaceWallCheck={canPlaceWallCheck}
+                isMobileLayout={isMobileLayout}
+                onBoardBoundsChange={setBoardBounds}
               />
             </div>
 

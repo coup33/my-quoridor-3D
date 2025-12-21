@@ -4,7 +4,7 @@
  * 리팩토링: 서브컴포넌트들을 별도 파일로 분리
  */
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 
@@ -14,8 +14,17 @@ import Pawn3D from './Pawn3D';
 import BoardBase from './BoardBase';
 import { Wall3D, WallTarget3D, WallHitbox3D } from './Wall3D';
 
+// 상수: 3D 보드 및 카메라 설정
+const BOARD_WIDTH = 11;        // 보드의 3D 너비 (단위: -5.5 ~ +5.5)
+const FOV = 50;                // 고정 화각 (도)
+const CAMERA_Z = 5;            // 카메라 Z 위치 (고정)
+const BOARD_NEAR_Z = 4 * 1.15; // 보드 밑변 Z 위치 (카메라에서 가장 가까운 변)
+const BOARD_FAR_Z = -4;        // 보드 윗변 Z 위치
+
 /**
  * 메인 3D 보드 컴포넌트
+ * @param {boolean} isMobileLayout - 모바일 레이아웃 여부
+ * @param {function} onBoardBoundsChange - 보드 경계 변경 콜백 (보드 상단 Y 픽셀 위치)
  */
 const Board3D = ({
     player1,
@@ -29,7 +38,9 @@ const Board3D = ({
     onCellClick,
     onWallClick,
     isMoveableCheck,
-    canPlaceWallCheck
+    canPlaceWallCheck,
+    isMobileLayout = false,
+    onBoardBoundsChange = null
 }) => {
     // 벽 모드인지 확인
     const isWallMode = actionMode === 'wall';
@@ -147,58 +158,125 @@ const Board3D = ({
     }, [previewWall, onWallClick]);
 
     // 화면 크기에 따른 카메라 설정
-    const [cameraSettings, setCameraSettings] = useState({ fov: 50, position: [0, 14, 5] });
+    const [cameraSettings, setCameraSettings] = useState({ fov: FOV, position: [0, 14, CAMERA_Z] });
 
-    // 화면 크기 변경 감지 - 수학적 계산으로 카메라 높이 결정
+    /**
+     * 보드 밑변이 화면에서 몇 픽셀 너비로 보이는지 계산
+     * @param {number} cameraY - 카메라 Y 높이
+     * @param {number} screenWidth - 화면 너비
+     * @returns {number} 보드 밑변의 화면 픽셀 너비
+     */
+    const calculateBoardPixelWidth = useCallback((cameraY, screenWidth) => {
+        const distanceZ = BOARD_NEAR_Z - CAMERA_Z;
+        const distance = Math.sqrt(cameraY * cameraY + distanceZ * distanceZ);
+        const fovRad = (FOV * Math.PI) / 180;
+        const halfFovTan = Math.tan(fovRad / 2);
+        return (BOARD_WIDTH / (2 * distance * halfFovTan)) * screenWidth;
+    }, []);
+
+    /**
+     * 보드 상단(윗변)이 화면에서 Y 좌표 몇 픽셀에 위치하는지 계산
+     * @param {number} cameraY - 카메라 Y 높이
+     * @param {number} screenHeight - 화면 높이
+     * @returns {number} 보드 상단의 화면 Y 픽셀 위치 (위에서부터)
+     */
+    const calculateBoardTopPixelY = useCallback((cameraY, screenHeight) => {
+        // 보드 윗변은 BOARD_FAR_Z에 위치
+        // 카메라는 [0, cameraY, CAMERA_Z]에서 [0, 0, 0] 방향을 바라봄
+        // 수직 FOV를 사용하여 보드 윗변의 Y 좌표 계산
+
+        const distanceToFarEdge = Math.sqrt(cameraY * cameraY + (BOARD_FAR_Z - CAMERA_Z) ** 2);
+        const angleToFarEdge = Math.atan2(cameraY, CAMERA_Z - BOARD_FAR_Z); // 카메라에서 보드 윗변까지의 각도
+
+        const fovRad = (FOV * Math.PI) / 180;
+        const halfFov = fovRad / 2;
+
+        // 화면 중앙에서 보드 윗변까지의 각도 비율
+        // lookAt은 (0, 0, 0)을 바라보므로, 보드 윗변은 화면 위쪽에 위치
+        const cameraLookAngle = Math.atan2(cameraY, -CAMERA_Z); // 카메라가 바라보는 방향의 각도
+        const topEdgeAngle = Math.atan2(cameraY, CAMERA_Z - BOARD_FAR_Z);
+
+        // 화면에서의 상대적 위치 (0 = 중앙, -1 = 상단, 1 = 하단)
+        const relativeY = (topEdgeAngle - cameraLookAngle) / halfFov;
+
+        // 화면 픽셀 좌표로 변환
+        const pixelY = screenHeight / 2 - (relativeY * screenHeight / 2);
+
+        return Math.max(0, pixelY);
+    }, []);
+
+    // 화면 크기 변경 감지 - 모바일/데스크탑 분기 처리
     useEffect(() => {
         const updateCamera = () => {
             const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
 
-            // 상수 정의
-            const BOARD_WIDTH = 11;        // 보드의 3D 너비 (단위)
-            const FOV = 50;                // 고정 화각 (도)
-            const CAMERA_Z = 5;            // 카메라 Z 위치 (고정)
-            const BOARD_NEAR_Z = 4 * 1.15; // 보드 밑변 Z 위치 (카메라에서 가장 가까운 변)
-            const PADDING_RATIO = 0.9;     // 화면의 90%를 보드가 차지하도록 (여백 10%)
+            // 모바일 레이아웃: 보드가 화면 가로를 넘지 않도록 제한
+            if (isMobileLayout) {
+                // 모바일 UI 영역 정의
+                const UI_TOP_HEIGHT = 80;      // 상단 UI (상대 정보 + 타임바)
+                const UI_BOTTOM_HEIGHT = 130;  // 하단 UI (내 타임바 + 버튼)
+                const PADDING = 20;            // 좌우 여백
 
-            // 목표: 보드가 화면 너비의 PADDING_RATIO만큼 차지하도록 카메라 높이 계산
-            const targetPixelWidth = screenWidth * PADDING_RATIO;
+                // 보드가 차지할 수 있는 최대 가로 크기 (화면 가로 - 여백)
+                const maxBoardWidth = screenWidth - PADDING * 2;
 
-            /**
-             * 3D → 2D 투영 공식:
-             * 
-             * 카메라에서 보드 밑변까지의 수평 거리: distanceZ = BOARD_NEAR_Z - CAMERA_Z
-             * 카메라에서 보드까지의 3D 거리 (대략): distance = sqrt(cameraY² + distanceZ²)
-             * 
-             * FOV를 사용한 투영:
-             * 보드의 화면상 너비(px) = (BOARD_WIDTH / (2 * distance * tan(FOV/2))) * screenWidth
-             * 
-             * 역산:
-             * distance = (BOARD_WIDTH * screenWidth) / (2 * targetPixelWidth * tan(FOV/2))
-             * cameraY = sqrt(distance² - distanceZ²)
-             */
+                // 보드가 차지할 수 있는 최대 세로 크기
+                const availableHeight = screenHeight - UI_TOP_HEIGHT - UI_BOTTOM_HEIGHT;
 
-            const distanceZ = BOARD_NEAR_Z - CAMERA_Z; // 카메라 Z에서 보드 밑변까지 거리
-            const fovRad = (FOV * Math.PI) / 180;       // FOV를 라디안으로 변환
-            const halfFovTan = Math.tan(fovRad / 2);
+                // 목표 보드 픽셀 너비: 화면 가로의 95%를 넘지 않음
+                const targetPixelWidth = Math.min(maxBoardWidth, screenWidth * 0.95);
 
-            // 필요한 3D 거리 계산
-            // 화면에서 보드가 targetPixelWidth 픽셀로 보이려면 필요한 거리
-            const requiredDistance = (BOARD_WIDTH / (2 * halfFovTan)) * (screenWidth / targetPixelWidth);
+                const fovRad = (FOV * Math.PI) / 180;
+                const halfFovTan = Math.tan(fovRad / 2);
+                const distanceZ = BOARD_NEAR_Z - CAMERA_Z;
 
-            // 카메라 Y 높이 계산 (피타고라스)
-            const cameraY = Math.sqrt(Math.max(requiredDistance * requiredDistance - distanceZ * distanceZ, 100));
+                // 보드가 targetPixelWidth로 보이려면 필요한 카메라 거리
+                const requiredDistance = (BOARD_WIDTH / (2 * halfFovTan)) * (screenWidth / targetPixelWidth);
 
-            // 최소/최대 높이 제한
-            const clampedY = Math.max(12, Math.min(25, cameraY));
+                // 카메라 Y 높이 계산 (피타고라스)
+                let cameraY = Math.sqrt(Math.max(requiredDistance * requiredDistance - distanceZ * distanceZ, 100));
 
-            setCameraSettings({ fov: FOV, position: [0, clampedY, CAMERA_Z] });
+                // 모바일에서는 카메라를 더 높이 올려서 보드를 작게 보이게 할 수 있음
+                // 최소 높이는 보드가 화면 가로를 넘지 않도록
+                const minCameraY = cameraY;  // 이 높이 이하로 내려가면 보드가 넘침
+
+                // 실제 카메라 높이: 최소값 이상 유지
+                const clampedY = Math.max(minCameraY, Math.min(30, cameraY));
+
+                setCameraSettings({ fov: FOV, position: [0, clampedY, CAMERA_Z] });
+
+                // 보드 상단 위치를 부모에게 알림
+                if (onBoardBoundsChange) {
+                    const boardTopY = calculateBoardTopPixelY(clampedY, screenHeight);
+                    const actualBoardWidth = calculateBoardPixelWidth(clampedY, screenWidth);
+                    onBoardBoundsChange({
+                        topY: boardTopY,
+                        width: actualBoardWidth,
+                        cameraY: clampedY
+                    });
+                }
+            } else {
+                // 데스크탑: 기존 로직 유지
+                const PADDING_RATIO = 0.9;
+                const targetPixelWidth = screenWidth * PADDING_RATIO;
+
+                const distanceZ = BOARD_NEAR_Z - CAMERA_Z;
+                const fovRad = (FOV * Math.PI) / 180;
+                const halfFovTan = Math.tan(fovRad / 2);
+
+                const requiredDistance = (BOARD_WIDTH / (2 * halfFovTan)) * (screenWidth / targetPixelWidth);
+                const cameraY = Math.sqrt(Math.max(requiredDistance * requiredDistance - distanceZ * distanceZ, 100));
+                const clampedY = Math.max(12, Math.min(25, cameraY));
+
+                setCameraSettings({ fov: FOV, position: [0, clampedY, CAMERA_Z] });
+            }
         };
 
         updateCamera();
         window.addEventListener('resize', updateCamera);
         return () => window.removeEventListener('resize', updateCamera);
-    }, []);
+    }, [isMobileLayout, onBoardBoundsChange, calculateBoardPixelWidth, calculateBoardTopPixelY]);
 
     return (
         <div style={{ width: '100%', height: '100%', minHeight: '500px' }}>

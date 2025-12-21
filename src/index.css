@@ -1,70 +1,22 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/**
+ * 메인 스타일 엔트리 포인트
+ * 클린 슬레이트 리팩토링 - 단순화된 구조
+ * 
+ * 순서:
+ * 1. variables - CSS 변수
+ * 2. base - 기본 스타일
+ * 3. components - 컴포넌트 스타일 (통합)
+ * 4. layout - 3D 레이아웃 + 반응형 (통합)
+ */
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+/* 디자인 토큰 */
+@import './styles/variables.css';
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* 기본 스타일 */
+@import './styles/base.css';
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
+/* 컴포넌트 스타일 (통합) */
+@import './styles/components.css';
 
-/* ★ [수정] 여기가 문제였습니다! */
-/* display: flex와 place-items: center를 제거하여 App.css가 레이아웃을 주도하게 함 */
-body {
-  margin: 0;
-  /* display: flex;  <-- 삭제 */
-  /* place-items: center; <-- 삭제 */
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
+/* 레이아웃 (3D + 반응형 통합) */
+@import './styles/layout.css';

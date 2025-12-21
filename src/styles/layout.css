@@ -4,10 +4,78 @@
  */
 
 /* 3D 메인 콘텐츠 - 전체 화면 */
+/* 3D 메인 콘텐츠 - 전체 화면 */
 .main-content-3d {
     position: relative;
     width: 100%;
     height: 100vh;
+}
+
+/* ==========================================
+   공통 UI 요소 (타이틀, 메뉴 버튼)
+   ========================================== */
+
+/* 게임 타이틀 - 데스크탑 기본 (좌측 세로 배치) */
+.game-title {
+    position: fixed;
+    top: 50%;
+    left: 40px;
+    transform: translateY(-50%);
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: 0.3em;
+    /* 간격 축소 */
+
+    /* 파란색-보라색 그라데이션 */
+    background: linear-gradient(to bottom, #00d4ff, #7c3aed);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    /* fallback */
+
+    z-index: 0;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+    transition: all 0.5s ease;
+    filter: drop-shadow(0 0 10px rgba(124, 58, 237, 0.3));
+    font-family: 'Inter', system-ui, sans-serif;
+    /* 폰트 명시 */
+}
+
+/* 메뉴 버튼 - 데스크탑 (좌측 하단, 항복 버튼 아래) */
+.menu-float {
+    position: fixed;
+    bottom: 30px;
+    /* 좌측 하단 배지(80px) 아래 */
+    left: 20px;
+    transform: none;
+    z-index: 200;
+    padding: 10px 24px;
+    background: rgba(30, 30, 50, 0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    /* 둥근 사각형 */
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    font-weight: 500;
+    /* 볼드체 제거 */
+    font-family: 'Inter', system-ui, sans-serif;
+    /* 타이틀과 동일한 폰트 */
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.menu-float:hover {
+    background: rgba(20, 20, 35, 0.9);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* 3D 보드 - 전체 화면, 정사각형 유지 */
@@ -262,30 +330,34 @@
 
 /* 모바일 모드: 보드 컨테이너 - flexbox로 세로 배치 */
 .mobile-mode .board-fullscreen-3d {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100vw;
     height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 40px 0 20px 0;
+    justify-content: flex-start;
+    padding: 50px 10px 10px 10px;
+    /* 상단 타이틀 공간 */
     box-sizing: border-box;
+    transform: none;
 }
 
-/* 모바일 모드: 3D 보드 영역 */
+/* 모바일 모드: 3D 보드 영역 - 상단/하단 UI 사이에 배치 */
 .mobile-mode .board-3d-inner {
     flex: 1;
-    width: 100%;
-    max-width: 100vw;
-    max-height: calc(100vw - 40px);
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    /* 가로 넘침 방지 */
+    max-height: calc(100vh - 250px);
+    /* 상단(80px) + 하단(130px) + 여백 */
     display: flex;
     align-items: center;
     justify-content: center;
+    order: 2;
+    /* flexbox 순서: 상단(1) - 보드(2) - 하단(3) */
 }
 
 /* 모바일 모드: 상단/하단 바 표시 */
@@ -300,6 +372,8 @@
     align-items: center;
     gap: 6px;
     z-index: 100;
+    order: 1;
+    /* 상단 UI */
 }
 
 .mobile-mode .mobile-opponent-info {
@@ -338,15 +412,19 @@
 }
 
 .mobile-mode .mobile-status-left {
-    /* 비율 배치: 중앙에 더 가깝게 */
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .mobile-mode .mobile-status-center {
-    /* 중앙 고정 */
+    flex: 0 0 auto;
 }
 
 .mobile-mode .mobile-status-right {
-    /* 비율 배치: 중앙에 더 가깝게 */
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
 }
 
 /* 모바일 상태 행의 배지 스타일 통일 */
@@ -372,17 +450,22 @@
     align-items: center;
     gap: 8px;
     z-index: 100;
+    order: 3;
+    /* 하단 UI */
 }
 
 .mobile-mode .mobile-my-controls {
     width: 100%;
     display: flex;
     justify-content: space-between;
+    /* 양 끝 정렬 */
     align-items: center;
     background: rgba(20, 20, 35, 0.85);
-    padding: 8px 16px;
+    padding: 8px 24px;
+    /* 패딩을 늘려 너무 가장자리에 붙지 않게 함 */
     border-radius: 12px;
     border: 1px solid rgba(100, 100, 150, 0.3);
+    box-sizing: border-box;
 }
 
 .mobile-mode .mobile-my-info {
@@ -392,6 +475,8 @@
     font-size: 16px;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.8);
+    flex-shrink: 0;
+    /* 줄어들지 않게 */
 }
 
 .mobile-mode .mobile-my-info.active {
@@ -402,6 +487,8 @@
 .mobile-mode .mobile-action-buttons {
     display: flex;
     gap: 8px;
+    flex-shrink: 0;
+    /* 줄어들지 않게 */
 }
 
 /* 모바일 모드: 타이틀을 상단으로 이동 */
@@ -414,6 +501,31 @@
     letter-spacing: 0.3em;
     font-size: 1.2rem;
     z-index: 200;
+    pointer-events: none;
+    text-shadow: none;
+    width: 100%;
+    text-align: center;
+    /* 모바일은 가로 그라데이션 */
+    background: linear-gradient(to right, #00d4ff, #7c3aed);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* 모바일 모드: 메뉴 버튼 우측 상단으로 이동 */
+.mobile-mode .menu-float {
+    top: 10px !important;
+    bottom: auto !important;
+    /* 데스크탑 bottom 속성 초기화 */
+    left: auto !important;
+    /* 좌측 초기화 */
+    right: 20px !important;
+    /* 우측 배치 */
+    transform: none !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    z-index: 201;
+    /* 타이틀 위 */
 }
 
 /* 모바일 모드: 좌측 하단 배지 숨기기 (상단으로 이동됨) */

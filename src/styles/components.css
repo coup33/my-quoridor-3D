@@ -1,0 +1,566 @@
+/**
+ * components.css - 모든 컴포넌트 스타일 통합
+ * 클린 슬레이트 리팩토링
+ */
+
+/* ========================================
+   1. 타임바 (TimeBar)
+   ======================================== */
+
+.time-bar-container {
+    width: 95%;
+    max-width: 500px;
+    margin: var(--spacing-sm) 0;
+}
+
+.time-info-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    margin-bottom: 8px;
+    width: 100%;
+}
+
+.info-left {
+    justify-self: start;
+}
+
+.info-center {
+    justify-self: center;
+}
+
+.info-right {
+    justify-self: end;
+}
+
+/* 상태 배지 */
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: white;
+    white-space: nowrap;
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.badge-spectator {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8));
+    box-shadow: 0 0 15px var(--color-danger-glow);
+    animation: pulse 2s infinite;
+}
+
+.badge-ingame {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8));
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+}
+
+.badge-resign {
+    background: var(--glass-bg);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.badge-resign:hover {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8));
+    color: white;
+    box-shadow: 0 0 15px var(--color-danger-glow);
+}
+
+/* 턴 표시 */
+.turn-indicator-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-md);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.turn-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: var(--border-radius-full);
+    display: inline-block;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.dot-white {
+    background: linear-gradient(145deg, #ffffff, #e0e0e0);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+.dot-black {
+    background: linear-gradient(145deg, #2c2c2c, #1a1a1a);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+/* 타이머 바 */
+.time-bar-track {
+    width: 100%;
+    height: var(--timer-height);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-inset), var(--shadow-inset-glow);
+}
+
+.time-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    width: 100%;
+    border-radius: 20px;
+    transition: width 0.5s linear, background-color var(--transition-normal);
+    box-shadow: 0 0 15px var(--color-success-glow);
+}
+
+.time-bar-fill.warning {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    box-shadow: 0 0 15px var(--color-warning-glow);
+}
+
+.time-bar-fill.danger {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+    box-shadow: 0 0 15px var(--color-danger-glow);
+    animation: pulse 0.5s ease-in-out infinite;
+}
+
+.time-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    font-weight: var(--font-weight-bold);
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    z-index: 2;
+    letter-spacing: 1px;
+}
+
+.win-text {
+    font-weight: var(--font-weight-bold);
+    background: var(--color-accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* ========================================
+   2. 사이드 패널
+   ======================================== */
+
+.t-white {
+    color: var(--color-text-primary);
+}
+
+.t-black {
+    color: var(--color-text-secondary);
+}
+
+.p1-btn,
+.p2-btn {
+    background: rgba(40, 40, 60, 0.8);
+    color: var(--color-text-primary);
+    border: 1px solid var(--glass-border);
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transform: translateZ(0);
+}
+
+.p1-btn:hover,
+.p2-btn:hover {
+    background: rgba(60, 60, 80, 0.9);
+    box-shadow: var(--shadow-md);
+}
+
+.p1-btn.selected {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.p2-btn.selected {
+    background: linear-gradient(135deg, rgba(60, 60, 60, 0.8), rgba(40, 40, 40, 0.8));
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 20px rgba(100, 100, 100, 0.4);
+}
+
+/* ========================================
+   3. 모달
+   ======================================== */
+
+.modal {
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-lg);
+    border: 1px solid var(--glass-border);
+    color: var(--color-text-primary);
+    padding: var(--spacing-xl) calc(var(--spacing-xl) * 1.5);
+    border-radius: var(--border-radius-xl);
+    text-align: center;
+    box-shadow: var(--shadow-xl), var(--shadow-inset-glow);
+    position: relative;
+    overflow: hidden;
+}
+
+.modal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+}
+
+.modal h2 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-extrabold);
+    background: var(--color-accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--spacing-sm);
+}
+
+.modal p {
+    color: var(--color-text-muted);
+}
+
+.reset-large {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-md) var(--spacing-xl);
+    background: linear-gradient(135deg, var(--color-success), #059669);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-lg);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 4px 15px var(--color-success-glow);
+}
+
+.reset-large:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px var(--color-success-glow);
+}
+
+.menu-title {
+    margin-bottom: var(--spacing-lg);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 2px;
+    background: var(--color-accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.menu-btn {
+    width: 100%;
+    padding: var(--spacing-md);
+    border: none;
+    border-radius: var(--border-radius-lg);
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-lg);
+    transition: all var(--transition-fast);
+}
+
+.btn-exit {
+    background: linear-gradient(135deg, var(--color-danger), #dc2626);
+    color: white;
+    box-shadow: 0 4px 15px var(--color-danger-glow);
+}
+
+.btn-exit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--color-danger-glow);
+}
+
+.btn-close {
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-sm);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--glass-border);
+    margin-top: var(--spacing-md);
+}
+
+.btn-close:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-light);
+}
+
+/* ========================================
+   4. 로비
+   ======================================== */
+
+.lobby-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: var(--blur-lg);
+    z-index: var(--z-index-lobby);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.lobby-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-lg);
+    border: 1px solid var(--glass-border);
+    color: var(--color-text-primary);
+    padding: var(--spacing-xl);
+    border-radius: var(--border-radius-xl);
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: var(--shadow-xl), var(--shadow-inset-glow);
+}
+
+.lobby-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.lobby-card h2 {
+    font-weight: var(--font-weight-extrabold);
+    letter-spacing: 3px;
+    background: var(--color-accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--spacing-lg);
+}
+
+.role-selection {
+    width: 100%;
+}
+
+.role-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.role-btn {
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--border-radius-lg);
+    font-weight: var(--font-weight-bold);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    backdrop-filter: var(--blur-sm);
+}
+
+.role-btn.white {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+    color: var(--color-text-primary);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.role-btn.white:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.role-btn.black {
+    background: linear-gradient(135deg, rgba(40, 40, 40, 0.8), rgba(30, 30, 30, 0.8));
+    color: var(--color-text-primary);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.role-btn.black:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(60, 60, 60, 0.8), rgba(40, 40, 40, 0.8));
+    box-shadow: 0 0 20px rgba(100, 100, 100, 0.4);
+    transform: translateY(-2px);
+}
+
+.role-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.taken-badge {
+    font-size: var(--font-size-xs);
+    background: rgba(239, 68, 68, 0.3);
+    color: var(--color-danger);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--color-danger);
+}
+
+.ready-section {
+    width: 100%;
+}
+
+.status-box {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.player-status {
+    padding: var(--spacing-md);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    color: var(--color-text-muted);
+    transition: all var(--transition-fast);
+}
+
+.player-status.ready {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+    border-color: var(--color-success);
+    color: var(--color-success);
+    font-weight: var(--font-weight-bold);
+    box-shadow: 0 0 15px var(--color-success-glow);
+}
+
+.start-btn {
+    width: 100%;
+    padding: var(--spacing-md);
+    background: linear-gradient(135deg, var(--color-success), #059669);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-lg);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 4px 15px var(--color-success-glow);
+}
+
+.start-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px var(--color-success-glow);
+}
+
+.start-btn.waiting {
+    background: linear-gradient(135deg, rgba(100, 100, 100, 0.5), rgba(80, 80, 80, 0.5));
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.cancel-btn {
+    width: 100%;
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-sm);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.cancel-btn:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-light);
+}
+
+/* 난이도 선택 */
+.difficulty-overlay {
+    width: 100%;
+    height: auto;
+    padding: var(--spacing-md) 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--spacing-md);
+}
+
+.difficulty-overlay h3 {
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.diff-btn {
+    padding: var(--spacing-md);
+    border: none;
+    border-radius: var(--border-radius-lg);
+    font-weight: var(--font-weight-bold);
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: var(--font-size-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+.diff-btn:hover {
+    transform: translateY(-3px);
+}
+
+.diff-btn:active {
+    transform: scale(0.98);
+}
+
+.diff-1 {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.diff-2 {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.diff-3 {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+}
+
+.diff-4 {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+.btn-back {
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-sm);
+    color: var(--color-text-muted);
+    border: 1px solid var(--glass-border);
+    box-shadow: none;
+    margin-top: var(--spacing-sm);
+}
+
+.btn-back:hover {
+    background: var(--glass-bg-hover);
+}
