@@ -34,6 +34,10 @@ function App() {
 
   useEffect(() => {
     const checkMobileLayout = () => {
+
+
+
+
       const boardSize = Math.min(window.innerWidth, window.innerHeight);
       const leftPanelLeft = window.innerWidth / 2 - boardSize / 2 - 100;
       const titleRight = 80;
@@ -196,18 +200,22 @@ function App() {
         <main className={`main-content-3d ${isMobileLayout ? 'mobile-mode' : 'desktop-mode'}`}>
           {/* 3D 보드 컨테이너 */}
           <div className="board-fullscreen-3d">
-            {/* 상단 타임바 영역 (모바일) */}
+            {/* 상단 영역 (모바일) - 배지, 턴, 항복 + 타임바 */}
             <div className="mobile-top-bar">
-              <PlayerInfo
-                playerNumber={opponentPlayerNumber}
-                wallCount={opponentWallCount}
-                isActive={turn !== myRole}
-                className="mobile-opponent-info"
-              />
-              <div className="mobile-timebar-area">
-                <div className="floating-turn-indicator">{turnIndicator}</div>
-                <TimeBar time={topTime} />
+              {/* 상단 정보 행: 좌측-게임중/관전중, 중앙-턴표시, 우측-항복 */}
+              <div className="mobile-status-row">
+                <div className="mobile-status-left">
+                  {topBadge}
+                </div>
+                <div className="mobile-status-center">
+                  {turnIndicator}
+                </div>
+                <div className="mobile-status-right">
+                  {resignButton}
+                </div>
               </div>
+              {/* 상대 타임바 */}
+              <TimeBar time={topTime} />
             </div>
 
             {/* 3D 보드 */}

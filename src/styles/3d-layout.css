@@ -307,6 +307,43 @@
     gap: 6px;
 }
 
+/* 모바일 상단 상태 행: 게임중 | 턴 표시 | 항복 */
+.mobile-mode .mobile-status-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 8px;
+}
+
+.mobile-mode .mobile-status-left {
+    justify-self: start;
+}
+
+.mobile-mode .mobile-status-center {
+    justify-self: center;
+}
+
+.mobile-mode .mobile-status-right {
+    justify-self: end;
+}
+
+/* 모바일 상태 행의 배지 스타일 통일 */
+.mobile-mode .mobile-status-row .status-badge {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 16px;
+}
+
+.mobile-mode .mobile-status-row .turn-indicator-box {
+    font-size: 13px;
+}
+
+.mobile-mode .mobile-status-row .turn-dot {
+    width: 12px;
+    height: 12px;
+}
+
 /* 모바일 모드: 하단 바 */
 .mobile-mode .mobile-bottom-bar {
     width: calc(100vw - 40px);

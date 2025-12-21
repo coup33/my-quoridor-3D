@@ -149,17 +149,50 @@ const Board3D = ({
     // 화면 크기에 따른 카메라 설정
     const [cameraSettings, setCameraSettings] = useState({ fov: 50, position: [0, 14, 5] });
 
-    // 화면 크기 변경 감지
+    // 화면 크기 변경 감지 - 수학적 계산으로 카메라 높이 결정
     useEffect(() => {
         const updateCamera = () => {
-            const isMobile = window.innerWidth <= 900;
-            if (isMobile) {
-                // 모바일: FOV를 조정하여 보드가 적절히 보이게
-                setCameraSettings({ fov: 62, position: [0, 16, 6] });
-            } else {
-                // 데스크탑: 기본 설정
-                setCameraSettings({ fov: 50, position: [0, 14, 5] });
-            }
+            const screenWidth = window.innerWidth;
+
+            // 상수 정의
+            const BOARD_WIDTH = 11;        // 보드의 3D 너비 (단위)
+            const FOV = 50;                // 고정 화각 (도)
+            const CAMERA_Z = 5;            // 카메라 Z 위치 (고정)
+            const BOARD_NEAR_Z = 4 * 1.15; // 보드 밑변 Z 위치 (카메라에서 가장 가까운 변)
+            const PADDING_RATIO = 0.9;     // 화면의 90%를 보드가 차지하도록 (여백 10%)
+
+            // 목표: 보드가 화면 너비의 PADDING_RATIO만큼 차지하도록 카메라 높이 계산
+            const targetPixelWidth = screenWidth * PADDING_RATIO;
+
+            /**
+             * 3D → 2D 투영 공식:
+             * 
+             * 카메라에서 보드 밑변까지의 수평 거리: distanceZ = BOARD_NEAR_Z - CAMERA_Z
+             * 카메라에서 보드까지의 3D 거리 (대략): distance = sqrt(cameraY² + distanceZ²)
+             * 
+             * FOV를 사용한 투영:
+             * 보드의 화면상 너비(px) = (BOARD_WIDTH / (2 * distance * tan(FOV/2))) * screenWidth
+             * 
+             * 역산:
+             * distance = (BOARD_WIDTH * screenWidth) / (2 * targetPixelWidth * tan(FOV/2))
+             * cameraY = sqrt(distance² - distanceZ²)
+             */
+
+            const distanceZ = BOARD_NEAR_Z - CAMERA_Z; // 카메라 Z에서 보드 밑변까지 거리
+            const fovRad = (FOV * Math.PI) / 180;       // FOV를 라디안으로 변환
+            const halfFovTan = Math.tan(fovRad / 2);
+
+            // 필요한 3D 거리 계산
+            // 화면에서 보드가 targetPixelWidth 픽셀로 보이려면 필요한 거리
+            const requiredDistance = (BOARD_WIDTH / (2 * halfFovTan)) * (screenWidth / targetPixelWidth);
+
+            // 카메라 Y 높이 계산 (피타고라스)
+            const cameraY = Math.sqrt(Math.max(requiredDistance * requiredDistance - distanceZ * distanceZ, 100));
+
+            // 최소/최대 높이 제한
+            const clampedY = Math.max(12, Math.min(25, cameraY));
+
+            setCameraSettings({ fov: FOV, position: [0, clampedY, CAMERA_Z] });
         };
 
         updateCamera();
