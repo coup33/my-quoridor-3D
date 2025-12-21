@@ -218,6 +218,7 @@ function App() {
               <TimeBar time={topTime} />
             </div>
 
+
             {/* 3D 보드 */}
             <div className="board-3d-inner">
               <Board3D
