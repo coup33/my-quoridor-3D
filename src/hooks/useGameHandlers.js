@@ -26,6 +26,7 @@ export const useGameHandlers = ({
     opponentPlayer,
     isGameStarted,
     myRole,
+    isMobile,
     // 상태 업데이트 함수
     setPreviewWall,
     setActionMode,
@@ -96,8 +97,8 @@ export const useGameHandlers = ({
             return;
         }
 
-        // 같은 위치 클릭 시 설치
-        if (previewWall?.x === x && previewWall?.y === y && previewWall?.orientation === orientation) {
+        // 같은 위치 클릭 시 설치 (모바일에서는 비활성화 - 설치 버튼으로만 가능)
+        if (!isMobile && previewWall?.x === x && previewWall?.y === y && previewWall?.orientation === orientation) {
             const nextWalls = [...walls, { x, y, orientation }];
             const nextState = {
                 p1: turn === 1 ? { ...player1, wallCount: player1.wallCount - 1 } : player1,
@@ -109,10 +110,35 @@ export const useGameHandlers = ({
             emitAction(nextState);
             setPreviewWall(null);
         } else {
-            // 프리뷰 표시
+            // 프리뷰 표시 (모바일: 항상 프리뷰, 데스크탑: 새 위치일 때만)
             setPreviewWall({ x, y, orientation });
         }
-    }, [isMyTurn, actionMode, currentPlayer.wallCount, canPlaceWallCheck, previewWall, walls, turn, player1, player2, emitAction, setPreviewWall]);
+    }, [isMyTurn, actionMode, currentPlayer.wallCount, canPlaceWallCheck, previewWall, walls, turn, player1, player2, emitAction, setPreviewWall, isMobile]);
+
+    // 벽 설치 확인 (모바일 설치 버튼용 - 프리뷰 상태에서 직접 설치)
+    const confirmWallPlacement = useCallback(() => {
+        if (!previewWall) return;
+        if (!isMyTurn || actionMode !== ACTION_MODES.WALL) return;
+        if (currentPlayer.wallCount <= 0) return;
+
+        const { x, y, orientation } = previewWall;
+
+        if (!canPlaceWallCheck(x, y, orientation)) {
+            setPreviewWall(null);
+            return;
+        }
+
+        const nextWalls = [...walls, { x, y, orientation }];
+        const nextState = {
+            p1: turn === 1 ? { ...player1, wallCount: player1.wallCount - 1 } : player1,
+            p2: turn === 2 ? { ...player2, wallCount: player2.wallCount - 1 } : player2,
+            turn: turn === 1 ? 2 : 1,
+            walls: nextWalls,
+            winner: null
+        };
+        emitAction(nextState);
+        setPreviewWall(null);
+    }, [previewWall, isMyTurn, actionMode, currentPlayer.wallCount, canPlaceWallCheck, walls, turn, player1, player2, emitAction, setPreviewWall]);
 
     // 역할 선택
     const handleSelectRole = useCallback((role) => {
@@ -166,6 +192,7 @@ export const useGameHandlers = ({
         // 게임 핸들러
         handleCellClick,
         handleWallClick,
+        confirmWallPlacement,
         // 로비 핸들러
         handleSelectRole,
         handleToggleReady,

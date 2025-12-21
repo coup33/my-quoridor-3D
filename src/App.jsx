@@ -119,6 +119,7 @@ function App() {
     canPlaceWallCheck,
     handleCellClick,
     handleWallClick,
+    confirmWallPlacement,
     handleSelectRole,
     handleToggleReady,
     handleStartAiGame,
@@ -133,6 +134,7 @@ function App() {
     currentPlayer,
     opponentPlayer: turn === 1 ? player2 : player1,
     isGameStarted, myRole,
+    isMobile: isMobileLayout,
     // 상태 업데이트 함수
     setPreviewWall, setActionMode, setMyRole, setShowMenu, setShowResignConfirm,
     // 소켓 함수
@@ -250,11 +252,18 @@ function App() {
                 {myRole && (
                   <ActionButtons
                     actionMode={actionMode}
-                    onActionModeChange={setActionMode}
+                    onActionModeChange={(mode) => {
+                      setActionMode(mode);
+                      if (mode !== 'wall') setPreviewWall(null);
+                    }}
                     isMyTurn={isMyTurn}
                     winner={winner}
                     wallCount={currentPlayer.wallCount}
                     className="mobile-action-buttons"
+                    // 모바일 벽 설치 확인용
+                    previewWall={previewWall}
+                    onConfirmWall={confirmWallPlacement}
+                    isMobile={isMobileLayout}
                   />
                 )}
               </div>
