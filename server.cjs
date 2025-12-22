@@ -7,26 +7,10 @@ const cors = require('cors');
 // const { minimax } = require('./server/aiCore.cjs'); // Worker에서 사용하므로 메인 스레드에선 제거 가능하지만, 혹시 모르니 주석 처리 or 제거
 
 const app = express();
-
-// 정적 파일 서빙 (Production)
-const path = require('path');
-app.use(express.static(path.join(__dirname, 'dist')));
-
-// SPA 라우팅 처리 (모든 요청을 index.html로)
-app.get('*', (req, res) => {
-  if (req.url.startsWith('/socket.io/')) return; // 소켓 요청은 패스
-  res.sendFile(path.join(__dirname, 'dist/index.html'));
-});
-
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "https://quoridor-3d-client.onrender.com",
-      "https://coup33.github.io",
-      "https://my-quoridor.onrender.com" // 사용자 도메인 추가
-    ],
+    origin: ["http://localhost:5173", "https://quoridor-3d-client.onrender.com", "https://coup33.github.io"],
     methods: ["GET", "POST"]
   },
   pingTimeout: 10000,
