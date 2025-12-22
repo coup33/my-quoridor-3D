@@ -10,7 +10,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "https://quoridor-3d-client.onrender.com", "https://coup33.github.io"],
+    origin: [
+      "http://localhost:5173",
+      "https://quoridor-3d-client.onrender.com",
+      "https://coup33.github.io",
+      "https://my-quoridor.onrender.com" // 여기! 이게 없어서 연결이 안 됩니다.
+    ],
     methods: ["GET", "POST"]
   },
   pingTimeout: 10000,
