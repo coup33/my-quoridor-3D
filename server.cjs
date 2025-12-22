@@ -256,7 +256,7 @@ io.on('connection', (socket) => {
 
       if (isGameStarted) {
         if (gameInterval) clearInterval(gameInterval);
-        if (aiWorker) { aiWorker.terminate(); aiWorker = null; } // Worker 정리
+        // [Server] AI Worker는 클라이언트 소관이므로 여기서 종료할 필요 없음
         isGameStarted = false;
         io.emit('game_start', false);
       }

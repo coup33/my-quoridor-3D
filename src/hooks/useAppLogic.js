@@ -38,7 +38,7 @@ export const useAppLogic = () => {
     const gameState = useGameState(myRole);
     const {
         player1, player2, turn, walls, winner, winReason,
-        p1Time, p2Time, lastWall, isVsAI, aiDifficulty, // [ClientAI]
+        p1Time, p2Time, lastMove, lastWall, isVsAI, aiDifficulty, // [ClientAI] lastMove 추가
         actionMode, setActionMode, previewWall, setPreviewWall,
         syncWithServer, resetState, isMyTurn
     } = gameState;

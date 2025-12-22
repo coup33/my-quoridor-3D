@@ -11,11 +11,17 @@ export const useAI = (gameState, isVsAI, aiDifficulty, onAIMove) => {
     const workerRef = useRef(null);
     const [isThinking, setIsThinking] = useState(false);
 
+    // 최신 onAIMove 함수를 유지하기 위한 Ref
+    const onAIMoveRef = useRef(onAIMove);
+
+    useEffect(() => {
+        onAIMoveRef.current = onAIMove;
+    }, [onAIMove]);
+
     // Worker 초기화
     useEffect(() => {
         if (!isVsAI) return;
 
-        // Vite/Webpack에서 Worker를 모듈로 불러오기 위한 문법
         workerRef.current = new Worker(new URL('../ai/aiWorker.js', import.meta.url), {
             type: 'module'
         });
@@ -28,10 +34,12 @@ export const useAI = (gameState, isVsAI, aiDifficulty, onAIMove) => {
 
             if (success) {
                 if (result.move) {
-                    onAIMove(result.move);
+                    // Ref를 통해 항상 최신 onAIMove 호출
+                    if (onAIMoveRef.current) {
+                        onAIMoveRef.current(result.move);
+                    }
                 } else {
                     console.warn("[ClientAI] No move found");
-                    // 움직임이 없으면(항복?) 처리는 나중에 고민
                 }
             } else {
                 console.error("[ClientAI] Worker Error:", error);

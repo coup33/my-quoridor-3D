@@ -151,7 +151,6 @@ export const useGameState = (myRole) => {
         turn,
         walls,
         winner,
-        winner,
         winReason,
         isVsAI,
         aiDifficulty,
