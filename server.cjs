@@ -42,104 +42,33 @@ let roles = { 1: null, 2: null };
 let readyStatus = { 1: false, 2: false };
 let isGameStarted = false;
 let gameInterval = null;
+let aiWorker = null; // Persistent Worker Instance
 
 
 
 const processAIMove = () => {
-  if (gameState.winner) return;
-  if (!isGameStarted || gameState.turn !== 2) return;
+  if (gameState.winner || !isGameStarted || gameState.turn !== 2) return;
+  if (!aiWorker) return; // Worker가 없으면 실행 불가
 
   const difficulty = gameState.aiDifficulty;
   let depth = 1;
 
   // 난이도별 Depth 설정
-  if (difficulty === 1) depth = 1;      // Easy
-  else if (difficulty === 2) depth = 2; // Medium
-  else if (difficulty === 3) depth = 3; // Hard
-  else if (difficulty === 4) depth = 4; // Expert
+  if (difficulty === 1) depth = 1;
+  else if (difficulty === 2) depth = 2;
+  else if (difficulty === 3) depth = 3;
+  else if (difficulty === 4) depth = 4;
 
   const startTime = Date.now();
-  const minDelay = 1000; // AI가 너무 빨리 두는 것을 방지하기 위한 최소 딜레이 (1초)
+  console.log(`[${new Date().toISOString()}] AI Thinking... Depth: ${depth}`);
 
-  // Worker 생성 및 실행
-  const workerPath = path.resolve(__dirname, 'server/aiWorker.cjs');
-  const worker = new Worker(workerPath);
+  // Worker에게 작업 지시
+  aiWorker.postMessage({ gameState, depth });
 
-  worker.postMessage({ gameState, depth });
-
-  worker.on('message', ({ success, result, error }) => {
-    if (success) {
-      const bestMove = result.move;
-      const endTime = Date.now();
-      const elapsed = endTime - startTime;
-      const computeSeconds = Math.floor(elapsed / 1000);
-
-      // AI 연산 시간만큼 타이머 차감 (최소 딜레이 대기 시간 포함X, 순수 연산 시간만)
-      if (computeSeconds > 0) {
-        gameState.p2Time -= computeSeconds;
-        if (gameState.p2Time <= 0) {
-          gameState.p2Time = 0;
-          gameState.winner = 1;
-          gameState.winReason = 'timeout';
-          io.emit('update_state', gameState);
-          worker.terminate();
-          return;
-        }
-      }
-
-      // 최소 딜레이 보장 (연산이 빨라도 minDelay만큼은 기다림)
-      const remainingDelay = Math.max(0, minDelay - elapsed);
-
-      setTimeout(() => {
-        if (gameState.winner) { worker.terminate(); return; } // 기다리는 동안 게임 끝났으면 종료
-
-        if (bestMove) {
-          const newState = { ...gameState };
-
-          if (bestMove.type === 'move') {
-            newState.lastMove = { player: 2, x: gameState.p2.x, y: gameState.p2.y };
-            newState.lastWall = null;
-            newState.p2 = { ...gameState.p2, x: bestMove.x, y: bestMove.y };
-
-            if (newState.p2.y === 0) {
-              newState.winner = 2;
-              newState.winReason = 'goal';
-            }
-          } else if (bestMove.type === 'wall') {
-            const wall = { x: bestMove.x, y: bestMove.y, orientation: bestMove.orientation };
-            newState.walls.push(wall);
-            newState.p2.wallCount--;
-            newState.lastWall = wall;
-            newState.lastMove = null;
-          }
-
-          if (!newState.winner) {
-            newState.turn = 1;
-            newState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT);
-          }
-
-          gameState = newState;
-          io.emit('update_state', gameState);
-        } else {
-          console.log("AI has no moves available.");
-        }
-        worker.terminate(); // 작업 완료 후 Worker 종료
-      }, remainingDelay);
-
-    } else {
-      console.error("AI Worker Error:", error);
-      worker.terminate();
-    }
-  });
-
-  worker.on('error', (err) => {
-    console.error("Worker Thread Error:", err);
-    worker.terminate();
-  });
-
-  worker.on('exit', (code) => {
-    if (code !== 0) console.error(`Worker stopped with exit code ${code}`);
-  });
+  // Worker 응답 핸들러는 startAiGame에서 한 번만 등록하거나, 여기서 등록하되 'once'를 쓰면 안됨(Worker는 계속 살아있음).
+  // 하지만 Worker는 하나고 요청도 순차적이므로, on('message')를 여기서 등록하면 리스너가 중복될 수 있음.
+  // 따라서 Worker 생성 시점에 핸들러를 등록하는 것이 좋음.
+  // 구조 변경 필요: startAiGame에서 Worker 생성 및 핸들러 등록.
 };
 
 // --- Server & Socket ---
@@ -213,6 +142,77 @@ io.on('connection', (socket) => {
     gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
     gameState.isVsAI = true;
     gameState.aiDifficulty = difficulty;
+
+    console.log(`[${new Date().toISOString()}] AI Game Started. Difficulty: ${difficulty}`);
+
+    // Worker 초기화
+    if (aiWorker) aiWorker.terminate();
+    const workerPath = path.resolve(__dirname, 'server/aiWorker.cjs');
+    aiWorker = new Worker(workerPath);
+
+    aiWorker.on('message', ({ success, result, error }) => {
+      console.log(`[${new Date().toISOString()}] AI Worker Result:`, success ? "Success" : error);
+      if (success) {
+        const bestMove = result.move;
+
+        // 여기에 로직 복붙보다는, 별도 처리 함수(handleAIMoveResult)를 만드는 게 좋음.
+        // 하지만 여기서는 인라인으로 처리하되, processAIMove의 minDelay 로직을 가져와야 함.
+        // Worker는 순수 계산만 하고, '결과 받음 -> 딜레이 -> 적용' 흐름.
+
+        // 간단하게 하기 위해:
+        // move 적용 로직을 processAIMove 내부가 아닌 여기서 처리.
+        // processAIMove는 단순히 postMessage만 함.
+
+        const minDelay = 1000;
+        // AI가 언제 시작했는지 알아야 함. processAIMove 호출 시각을 기록해야 함.
+        // 전역 변수 aiStartTime 사용 필요.
+
+        const now = Date.now();
+        // aiStartTime이 없으므로 대략적으로 현재 시각 기준 0초 딜레이 or 고정 1초
+        // 더 정확히 하려면 processAIMove에서 aiStartTime = Date.now() 하고 여기서 참조.
+
+        const elapsed = now - (global.aiStartTime || now);
+        const remainingDelay = Math.max(0, minDelay - elapsed);
+
+        setTimeout(() => {
+          if (!isGameStarted || gameState.winner) return;
+
+          if (bestMove) {
+            const newState = { ...gameState };
+
+            if (bestMove.type === 'move') {
+              newState.lastMove = { player: 2, x: gameState.p2.x, y: gameState.p2.y };
+              newState.lastWall = null;
+              newState.p2 = { ...gameState.p2, x: bestMove.x, y: bestMove.y };
+
+              if (newState.p2.y === 0) {
+                newState.winner = 2;
+                newState.winReason = 'goal';
+              }
+            } else if (bestMove.type === 'wall') {
+              const wall = { x: bestMove.x, y: bestMove.y, orientation: bestMove.orientation };
+              newState.walls.push(wall);
+              newState.p2.wallCount--;
+              newState.lastWall = wall;
+              newState.lastMove = null;
+            }
+
+            if (!newState.winner) {
+              newState.turn = 1;
+              newState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT);
+            }
+
+            gameState = newState;
+            io.emit('update_state', gameState);
+          }
+        }, remainingDelay);
+      }
+    });
+
+    aiWorker.on('error', (err) => {
+      console.error("Worker Error:", err);
+    });
+
     io.emit('lobby_update', { roles, readyStatus, isGameStarted });
     io.emit('game_start', true);
     io.emit('update_state', gameState);
@@ -266,6 +266,7 @@ io.on('connection', (socket) => {
 
     // ★ [핵심] AI 턴이면 실행 (이제 isVsAI가 사라지지 않으므로 정상 작동)
     if (gameState.isVsAI && gameState.turn === 2 && !gameState.winner) {
+      global.aiStartTime = Date.now(); // 시간 측정용 전역 변수
       processAIMove();
     }
   });
@@ -285,6 +286,7 @@ io.on('connection', (socket) => {
     if (roles[1] !== socket.id && roles[2] !== socket.id) return;
 
     if (gameInterval) clearInterval(gameInterval);
+    if (aiWorker) { aiWorker.terminate(); aiWorker = null; } // Worker 정리
     isGameStarted = false;
 
     roles = { 1: null, 2: null };
@@ -310,6 +312,7 @@ io.on('connection', (socket) => {
 
       if (isGameStarted) {
         if (gameInterval) clearInterval(gameInterval);
+        if (aiWorker) { aiWorker.terminate(); aiWorker = null; } // Worker 정리
         isGameStarted = false;
         io.emit('game_start', false);
       }
