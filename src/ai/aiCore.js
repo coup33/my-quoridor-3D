@@ -289,6 +289,10 @@ export const applyMove = (state, move) => {
         else newState.p2.wallCount--;
     }
 
+    // 승리 조건 체크
+    if (newState.p1.y === 8) newState.winner = 1;
+    else if (newState.p2.y === 0) newState.winner = 2;
+
     newState.turn = player === 1 ? 2 : 1;
     return newState;
 };

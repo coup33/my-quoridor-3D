@@ -13,9 +13,9 @@ export const SOCKET_URL = isDevelopment
 export const BOARD_SIZE = 9;
 export const MAX_WALLS = 10;
 
-// 타이머 설정 (테스트용 300초)
-export const MAX_TIME = 300;
-export const START_TIME = 300;
+// 타이머 설정
+export const MAX_TIME = 90;
+export const START_TIME = 60;
 export const TIME_INCREMENT = 6;
 
 // 초기 게임 상태

@@ -1,9 +1,5 @@
 // Board 컴포넌트 배럴 파일
-export { default as Board } from './Board';
-export { default as Cell } from './Cell';
-export { default as Pawn } from './Pawn';
-export { default as WallTargets } from './WallTargets';
-export { default as PlacedWalls } from './PlacedWalls';
+// 2D 컴포넌트 제거됨 (Clean Slate)
 
 // 3D 컴포넌트
 export { default as Board3D } from './Board3D';

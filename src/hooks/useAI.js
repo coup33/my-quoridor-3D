@@ -51,14 +51,30 @@ export const useAI = (gameState, isVsAI, aiDifficulty, onAIMove) => {
         };
     }, [isVsAI]);
 
+    // 이번 턴에 AI가 이미 요청을 보냈는지 추적
+    const lastAiTurn = useRef(null);
+
     // AI 턴 감지 및 연산 요청
     useEffect(() => {
         if (!isVsAI || !gameState) return;
-        if (gameState.turn !== 2 || gameState.winner) return;
+
+        // 내 턴이나 게임 종료 시에는 AI 처리 상태 초기화 (다음 AI 턴을 위해)
+        if (gameState.turn !== 2 || gameState.winner) {
+            lastAiTurn.current = null;
+            return;
+        }
+
         if (isThinking) return;
+
+        // 이미 이번 턴(P2의 현재 상태)에 대해 AI를 돌렸다면 스킵
+        // 상태가 변하지 않았는데 또 돌리면 안됨.
+        // 단순히 turn 번호만 보면 안되고, lastMove가 바뀌었는지 등을 봐야 함.
+        // 하지만 간단하게는 "Turn 2가 된 직후 한 번만" 실행하면 됨.
+        if (lastAiTurn.current === gameState.turn) return;
 
         const depth = AI_DIFFICULTY_DEPTH[aiDifficulty] || 2;
         setIsThinking(true);
+        lastAiTurn.current = gameState.turn; // 이번 턴 처리 시작 표시
 
         // 딜레이를 주어 UI가 먼저 렌더링되게 함 (AI가 너무 빠르면 턴 전환이 안 보임)
         setTimeout(() => {
@@ -67,7 +83,7 @@ export const useAI = (gameState, isVsAI, aiDifficulty, onAIMove) => {
             }
         }, 500);
 
-    }, [gameState, isVsAI, aiDifficulty]);
+    }, [gameState, isVsAI, aiDifficulty, isThinking]);
 
     return { isThinking };
 };
