@@ -15,8 +15,8 @@ const io = new Server(server, {
   pingInterval: 5000
 });
 
-const MAX_TIME = 300;
-const START_TIME = 300;
+const MAX_TIME = 90;
+const START_TIME = 60;
 const INCREMENT = 6;
 
 const INITIAL_GAME_STATE = {
@@ -188,105 +188,249 @@ const getValidMovesForPawn = (pawnPos, opponentPos, walls) => {
 };
 
 
+// --- Minimax AI Implementation ---
+
+// 상태 평가 함수
+const evaluateState = (state, player) => {
+  const p1Pos = state.p1;
+  const p2Pos = state.p2;
+
+  // 패스파인딩을 위해 현재 벽 상태 사용
+  const walls = state.walls;
+
+  // 목표 지점 (P1: y=8, P2: y=0)
+  // AI는 P2(Bot) 기준
+
+  const p1Path = getPathData(p1Pos, 8, walls, p2Pos);
+  const p2Path = getPathData(p2Pos, 0, walls, p1Pos);
+
+  // 1. 승리 조건: 내 거리가 0이면 승리
+  if (p2Path && p2Path.distance === 0) return 10000;
+  // 2. 패배 조건: 상대 거리가 0이면 패배
+  if (p1Path && p1Path.distance === 0) return -10000;
+
+  // 3. 갇힘 조건 (길이 없음)
+  if (!p2Path) return -5000; // 내가 갇힘
+  if (!p1Path) return 5000;  // 상대가 갇힘
+
+  const myDist = p2Path.distance;
+  const oppDist = p1Path.distance;
+
+  // 기본 점수: (상대 거리 - 내 거리) * 10
+  // 내가 목표에 가까울수록, 상대가 멀수록 유리
+  let score = (oppDist - myDist) * 10;
+
+  // 4. 벽 개수 가중치 (벽을 아끼면 가산점)
+  // 너무 빨리 다 쓰는 것을 방지 (후반 도모)
+  if (state.p2.wallCount > 0) {
+    score += state.p2.wallCount * 2;
+  }
+
+  // 5. 플레이어 관점에 따른 점수 반환
+  // Maximize Player(P2, AI) 입장에서 계산된 점수이므로
+  // player === 2이면 그대로, player === 1이면 반대로 반환 (Minimax 구조상)
+  return player === 2 ? score : -score;
+};
+
+// 간단한 상태 복제 (필요한 속성만)
+const cloneGameState = (state) => ({
+  p1: { ...state.p1 },
+  p2: { ...state.p2 },
+  walls: [...state.walls],
+  turn: state.turn
+});
+
+// 가능한 모든 수 생성 (이동 + 유망한 벽 설치)
+const getPossibleMoves = (state, player) => {
+  const moves = [];
+  const myPos = player === 1 ? state.p1 : state.p2;
+  const oppPos = player === 1 ? state.p2 : state.p1;
+  const walls = state.walls;
+  const wallCount = player === 1 ? state.p1.wallCount : state.p2.wallCount;
+
+  // 1. 이동 (Pawn Moves)
+  const validPawnMoves = getValidMovesForPawn(myPos, oppPos, walls);
+  validPawnMoves.forEach(pos => {
+    moves.push({ type: 'move', x: pos.x, y: pos.y });
+  });
+
+  // 2. 벽 설치 (Wall Placements) - 휴리스틱 적용 (성능 최적화)
+  // 모든 위치를 다 보면 너무 느림.
+  // "상대방의 최단 경로" 주변, "내 위치" 주변 위주로 탐색하되 범위를 제한
+  if (wallCount > 0) {
+    const oppTargetY = player === 1 ? 0 : 8;
+
+    // 상대방 최단 경로 계산
+    const oppPathData = getPathData(oppPos, oppTargetY, walls, myPos);
+
+    // 관심 좌표 집합 (Set으로 중복 제거)
+    const candidates = new Set();
+
+    // 상대방 경로상 좌표들 추가 (경로 방해)
+    if (oppPathData && oppPathData.fullPath) {
+      // [최적화] 전체 경로가 아닌 앞쪽 3~4칸만 고려하여 연산량 대폭 감소
+      const lookAhead = 4;
+      oppPathData.fullPath.slice(0, lookAhead).forEach(pos => {
+        candidates.add(`${pos.x},${pos.y}`);
+        // 경로 주변 1칸도 추가
+        [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dx, dy]) => {
+          candidates.add(`${pos.x + dx},${pos.y + dy}`);
+        });
+      });
+    }
+
+    // 내 주변 방어용 (선택적)
+    [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dx, dy]) => {
+      candidates.add(`${myPos.x + dx},${myPos.y + dy}`);
+    });
+
+    // 후보 좌표들에 대해 가로/세로 벽 유효성 검사
+    candidates.forEach(coord => {
+      const [cx, cy] = coord.split(',').map(Number);
+      if (inBoard(cx, cy)) {
+        ['h', 'v'].forEach(orientation => {
+          if (isValidWall(cx, cy, orientation, walls, state.p1, state.p2)) {
+            moves.push({ type: 'wall', x: cx, y: cy, orientation });
+          }
+        });
+      }
+    });
+  }
+
+  // [Move Ordering 최적화]
+  // '이동'을 먼저 탐색해야 Alpha-Beta 가지치기가 더 효율적으로 일어남 (점수 변화가 확실하므로)
+  // 같은 타입 내에서는 랜덤하게 섞어서 매번 다른 플레이 유도
+  const pawnMoves = moves.filter(m => m.type === 'move').sort(() => Math.random() - 0.5);
+  const wallMoves = moves.filter(m => m.type === 'wall').sort(() => Math.random() - 0.5);
+
+  return [...pawnMoves, ...wallMoves];
+};
+
+// 가상 이동 적용
+const applyMove = (state, move) => {
+  const newState = cloneGameState(state);
+  const player = newState.turn;
+
+  if (move.type === 'move') {
+    if (player === 1) newState.p1 = { ...newState.p1, x: move.x, y: move.y };
+    else newState.p2 = { ...newState.p2, x: move.x, y: move.y };
+  } else if (move.type === 'wall') {
+    newState.walls.push({ x: move.x, y: move.y, orientation: move.orientation });
+    if (player === 1) newState.p1.wallCount--;
+    else newState.p2.wallCount--;
+  }
+
+  newState.turn = player === 1 ? 2 : 1;
+  return newState;
+};
+
+// Minimax Algorithm
+const minimax = (state, depth, alpha, beta, isMaximizingPlayer) => {
+  const player = isMaximizingPlayer ? 2 : 1; // AI is P2 (Maximizing)
+
+  // 기저 조건: 깊이 도달 or 게임 종료
+  const score = evaluateState(state, 2); // 항상 AI(P2) 입장 점수
+  if (depth === 0 || score > 5000 || score < -5000) {
+    return { score };
+  }
+
+  const possibleMoves = getPossibleMoves(state, player);
+
+  if (isMaximizingPlayer) {
+    let maxEval = -Infinity;
+    let bestMove = null;
+
+    for (let move of possibleMoves) {
+      const newState = applyMove(state, move);
+      const evalResult = minimax(newState, depth - 1, alpha, beta, false);
+
+      if (evalResult.score > maxEval) {
+        maxEval = evalResult.score;
+        bestMove = move;
+      }
+      alpha = Math.max(alpha, evalResult.score);
+      if (beta <= alpha) break; // Pruning
+    }
+    return { score: maxEval, move: bestMove || possibleMoves[0] };
+  } else {
+    let minEval = Infinity;
+    let bestMove = null;
+
+    for (let move of possibleMoves) {
+      const newState = applyMove(state, move);
+      const evalResult = minimax(newState, depth - 1, alpha, beta, true);
+
+      if (evalResult.score < minEval) {
+        minEval = evalResult.score;
+        bestMove = move;
+      }
+      beta = Math.min(beta, evalResult.score);
+      if (beta <= alpha) break; // Pruning
+    }
+    return { score: minEval, move: bestMove || possibleMoves[0] };
+  }
+};
+
 const processAIMove = () => {
   if (gameState.winner) return;
 
+  // 비동기 처럼 보이게 하여 서버 블로킹 최소화 느낌 주기 (실제 계산은 동기)
   setTimeout(() => {
     if (gameState.winner || !isGameStarted || gameState.turn !== 2) return;
 
-    const p2Pos = { x: gameState.p2.x, y: gameState.p2.y };
-    const p1Pos = { x: gameState.p1.x, y: gameState.p1.y };
-    const walls = gameState.walls;
     const difficulty = gameState.aiDifficulty;
+    let depth = 1;
 
-    let moveAction = null;
-    let wallAction = null;
+    // 난이도별 Depth 설정
+    if (difficulty === 1) depth = 1;      // Easy: 바로 앞만 봄 (Greedy)
+    else if (difficulty === 2) depth = 2; // Medium: 2수 앞 (내 공격 + 상대 방어)
+    else if (difficulty === 3) depth = 3; // Hard: 3수 앞
+    else if (difficulty === 4) depth = 4; // Expert: 4수 앞 (깊은 수읽기)
 
-    // 상대방 위치를 고려한 경로 탐색
-    const myPathData = getPathData(p2Pos, 0, walls, p1Pos);
-    const oppPathData = getPathData(p1Pos, 8, walls, p2Pos);
+    // AI 계산 시작
+    // console.log(`AI Thinking... Difficulty: ${difficulty}, Depth: ${depth}`);
 
-    // AI 난이도별 로직
-    if (difficulty === 1) {
-      if (myPathData?.nextStep) moveAction = myPathData.nextStep;
-    } else if (difficulty === 2) {
-      if (Math.random() < 0.2 && gameState.p2.wallCount > 0) {
-        for (let i = 0; i < 15; i++) {
-          const rx = Math.floor(Math.random() * 8);
-          const ry = Math.floor(Math.random() * 8);
-          const rOr = Math.random() > 0.5 ? 'h' : 'v';
-          if (isValidWall(rx, ry, rOr, walls, p1Pos, p2Pos)) {
-            wallAction = { x: rx, y: ry, orientation: rOr };
-            break;
-          }
+    // 첫 수는 오프닝 라이브러리처럼 중앙 선점 유도 (선택적)
+
+    const result = minimax(gameState, depth, -Infinity, Infinity, true);
+    const bestMove = result.move;
+
+    if (bestMove) {
+      const newState = { ...gameState };
+
+      if (bestMove.type === 'move') {
+        newState.lastMove = { player: 2, x: gameState.p2.x, y: gameState.p2.y };
+        newState.lastWall = null;
+        newState.p2 = { ...gameState.p2, x: bestMove.x, y: bestMove.y };
+
+        // 승리 체크
+        if (newState.p2.y === 0) {
+          newState.winner = 2;
+          newState.winReason = 'goal';
         }
+      } else if (bestMove.type === 'wall') {
+        const wall = { x: bestMove.x, y: bestMove.y, orientation: bestMove.orientation };
+        newState.walls.push(wall);
+        newState.p2.wallCount--;
+        newState.lastWall = wall;
+        newState.lastMove = null;
       }
-      if (!wallAction && myPathData?.nextStep) moveAction = myPathData.nextStep;
-    } else if (difficulty === 3) {
-      if (oppPathData?.distance <= 3 && gameState.p2.wallCount > 0) {
-        const nextNode = oppPathData.fullPath[1] || oppPathData.fullPath[0];
-        const candidates = [
-          { x: nextNode.x, y: nextNode.y, o: 'h' },
-          { x: nextNode.x - 1, y: nextNode.y, o: 'h' },
-          { x: nextNode.x, y: nextNode.y, o: 'v' },
-          { x: nextNode.x, y: nextNode.y - 1, o: 'v' }
-        ];
-        for (let cand of candidates) {
-          if (isValidWall(cand.x, cand.y, cand.o, walls, p1Pos, p2Pos)) {
-            wallAction = { x: cand.x, y: cand.y, orientation: cand.o };
-            break;
-          }
-        }
+
+      // 턴 넘김 및 시간 업데이트
+      if (!newState.winner) {
+        newState.turn = 1;
+        newState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT);
       }
-      if (!wallAction && myPathData?.nextStep) moveAction = myPathData.nextStep;
-    } else if (difficulty === 4) {
-      if ((myPathData?.distance || 999) >= (oppPathData?.distance || 999) - 1 && gameState.p2.wallCount > 0) {
-        // ... (간소화)
-      }
-      if (!wallAction && myPathData?.nextStep) moveAction = myPathData.nextStep;
+
+      // 전역 상태 업데이트
+      gameState = newState;
+      io.emit('update_state', gameState);
+    } else {
+      // 움직일 수 없는 경우 (거의 없지만 방어 코드)
+      console.log("AI has no moves available.");
     }
 
-    // 기본 이동 (최단 경로)
-    if (!moveAction && !wallAction && myPathData?.nextStep) moveAction = myPathData.nextStep;
-
-    // 비상 이동 (랜덤) - 상대방 위치도 고려
-    if (!moveAction && !wallAction) {
-      const validMoves = getValidMovesForPawn(p2Pos, p1Pos, walls);
-      if (validMoves.length > 0) {
-        // 목표(y=0)에 가장 가까운 이동 선택
-        validMoves.sort((a, b) => a.y - b.y);
-        moveAction = validMoves[0];
-      }
-    }
-
-    let newState = { ...gameState };
-
-    // AI 행동 반영 (중요: 여기서도 lastMove 업데이트!)
-    if (wallAction) {
-      newState.walls.push(wallAction);
-      newState.p2.wallCount -= 1;
-      newState.lastWall = wallAction;
-      newState.lastMove = null;
-    } else if (moveAction) {
-      // ★ AI(P2) 이동 시 잔상 남기기
-      newState.lastMove = { player: 2, x: gameState.p2.x, y: gameState.p2.y };
-      newState.lastWall = null;
-      newState.p2 = { ...gameState.p2, x: moveAction.x, y: moveAction.y };
-
-      if (newState.p2.y === 0) {
-        newState.winner = 2;
-        newState.winReason = 'goal';
-      }
-    }
-
-    if (!newState.winner) {
-      newState.turn = 1; // 턴 넘김
-      newState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT);
-    }
-
-    gameState = newState;
-    io.emit('update_state', gameState);
-  }, 1000);
+  }, 500); // 0.5초 딜레이로 "생각하는 척" 연출
 };
 
 // --- Server & Socket ---
