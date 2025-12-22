@@ -149,7 +149,7 @@ export const getValidMovesForPawn = (pawnPos, opponentPos, walls) => {
 // --- Minimax AI Implementation ---
 
 // 상태 평가 함수
-const evaluateState = (state, player, prevPos = null) => {
+const evaluateState = (state, player, history = []) => {
     const p1Pos = state.p1;
     const p2Pos = state.p2;
 
@@ -178,10 +178,16 @@ const evaluateState = (state, player, prevPos = null) => {
     // 내가 목표에 가까울수록, 상대가 멀수록 유리
     let score = (oppDist - myDist) * 10;
 
-    // [Loop 방지] 이전 위치로 돌아가는 경우 페널티 부여
-    // prevPos가 있고 현재 위치가 prevPos와 같다면 페널티
-    if (prevPos && p2Pos.x === prevPos.x && p2Pos.y === prevPos.y) {
-        score -= 0.5; // 동일 점수일 때만 피하도록 소수점 단위 페널티
+    // [Loop 방지] 최근 방문 기록에 있는 위치로 돌아가는 경우 페널티 부여
+    // history 배열에 현재 위치가 포함되어 있다면 페널티
+    if (history && history.length > 0) {
+        // 최근에 방문했을수록 페널티를 크게 줄 수도 있지만, 일단 단순 방문 여부로 체크
+        // 3칸 왔다갔다 방지: A -> B -> C -> B -> A (History: A, B, C)
+        // 현재 B에서 A로 가려 함. A는 History에 있음. -> 페널티
+        const visitedCount = history.filter(pos => pos.x === p2Pos.x && pos.y === p2Pos.y).length;
+        if (visitedCount > 0) {
+            score -= 2.0 * visitedCount; // 방문 횟수당 페널티 (확실한 회피를 위해 0.5 -> 2.0 상향)
+        }
     }
 
     // 4. 벽 개수 가중치 (벽을 아끼면 가산점)
@@ -300,10 +306,10 @@ export const applyMove = (state, move) => {
 };
 
 // Minimax Algorithm
-export const minimax = (state, depth, alpha, beta, isMaximizingPlayer, prevPos = null) => {
+export const minimax = (state, depth, alpha, beta, isMaximizingPlayer, history = []) => {
     // 기저 조건: 깊이 도달 or 게임 종료
-    // 평가 함수에도 prevPos 전달
-    const score = evaluateState(state, 2, prevPos); // 항상 AI(P2) 입장 점수
+    // 평가 함수에도 history 전달
+    const score = evaluateState(state, 2, history); // 항상 AI(P2) 입장 점수
     if (depth === 0 || score > 5000 || score < -5000) {
         return { score };
     }
@@ -317,8 +323,8 @@ export const minimax = (state, depth, alpha, beta, isMaximizingPlayer, prevPos =
 
         for (let move of possibleMoves) {
             const newState = applyMove(state, move);
-            // 재귀 호출 시 prevPos 전달 (평가는 리프 노드에서 이루어지므로 계속 전달해야 함)
-            const evalResult = minimax(newState, depth - 1, alpha, beta, false, prevPos);
+            // 재귀 호출 시 history 전달 (평가는 리프 노드에서 이루어지므로 계속 전달해야 함)
+            const evalResult = minimax(newState, depth - 1, alpha, beta, false, history);
 
             if (evalResult.score > maxEval) {
                 maxEval = evalResult.score;
@@ -334,7 +340,7 @@ export const minimax = (state, depth, alpha, beta, isMaximizingPlayer, prevPos =
 
         for (let move of possibleMoves) {
             const newState = applyMove(state, move);
-            const evalResult = minimax(newState, depth - 1, alpha, beta, true, prevPos);
+            const evalResult = minimax(newState, depth - 1, alpha, beta, true, history);
 
             if (evalResult.score < minEval) {
                 minEval = evalResult.score;
