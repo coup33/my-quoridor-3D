@@ -15,7 +15,7 @@ export const MAX_WALLS = 10;
 
 // 타이머 설정
 export const MAX_TIME = 90;
-export const START_TIME = 60;
+export const START_TIME = 600;
 export const TIME_INCREMENT = 6;
 
 // 초기 게임 상태
