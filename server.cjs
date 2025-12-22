@@ -178,6 +178,7 @@ io.on('connection', (socket) => {
           }
         }
 
+        const minDelay = 1000; // AI 최소 딜레이
         // 최소 딜레이 보장 (연산이 빨라도 minDelay만큼은 기다림)
         const remainingDelay = Math.max(0, minDelay - elapsed);
 
