@@ -2,21 +2,23 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { Worker } = require('worker_threads');
-const path = require('path');
+// const { Worker } = require('worker_threads'); // Worker 관련 코드 삭제
+// const path = require('path'); // Worker 관련 코드 삭제
 // const { minimax } = require('./server/aiCore.cjs'); // Worker에서 사용하므로 메인 스레드에선 제거 가능하지만, 혹시 모르니 주석 처리 or 제거
 
 const app = express();
-app.use(cors());
-
 const server = http.createServer(app);
-
-// pingTimeout: 10초 (네트워크 끊김 방지 최적화)
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
+  cors: {
+    origin: ["http://localhost:5173", "https://quoridor-3d-client.onrender.com", "https://coup33.github.io"],
+    methods: ["GET", "POST"]
+  },
   pingTimeout: 10000,
   pingInterval: 5000
 });
+
+// [Server] Validation Logic Only
+const { inBoard, isValidWall, getPathData } = require('./server/aiCore.cjs');
 
 const MAX_TIME = 90;
 const START_TIME = 60;
@@ -42,34 +44,32 @@ let roles = { 1: null, 2: null };
 let readyStatus = { 1: false, 2: false };
 let isGameStarted = false;
 let gameInterval = null;
-let aiWorker = null; // Persistent Worker Instance
+// let aiWorker = null; // Persistent Worker Instance - Worker 관련 코드 삭제
 
+// const processAIMove = () => { // Worker 관련 코드 삭제
+//   if (gameState.winner || !isGameStarted || gameState.turn !== 2) return;
+//   if (!aiWorker) return; // Worker가 없으면 실행 불가
 
+//   const difficulty = gameState.aiDifficulty;
+//   let depth = 1;
 
-const processAIMove = () => {
-  if (gameState.winner || !isGameStarted || gameState.turn !== 2) return;
-  if (!aiWorker) return; // Worker가 없으면 실행 불가
+//   // 난이도별 Depth 설정
+//   if (difficulty === 1) depth = 1;
+//   else if (difficulty === 2) depth = 2;
+//   else if (difficulty === 3) depth = 3;
+//   else if (difficulty === 4) depth = 4;
 
-  const difficulty = gameState.aiDifficulty;
-  let depth = 1;
+//   const startTime = Date.now();
+//   console.log(`[${new Date().toISOString()}] AI Thinking... Depth: ${depth}`);
 
-  // 난이도별 Depth 설정
-  if (difficulty === 1) depth = 1;
-  else if (difficulty === 2) depth = 2;
-  else if (difficulty === 3) depth = 3;
-  else if (difficulty === 4) depth = 4;
+//   // Worker에게 작업 지시
+//   aiWorker.postMessage({ gameState, depth });
 
-  const startTime = Date.now();
-  console.log(`[${new Date().toISOString()}] AI Thinking... Depth: ${depth}`);
-
-  // Worker에게 작업 지시
-  aiWorker.postMessage({ gameState, depth });
-
-  // Worker 응답 핸들러는 startAiGame에서 한 번만 등록하거나, 여기서 등록하되 'once'를 쓰면 안됨(Worker는 계속 살아있음).
-  // 하지만 Worker는 하나고 요청도 순차적이므로, on('message')를 여기서 등록하면 리스너가 중복될 수 있음.
-  // 따라서 Worker 생성 시점에 핸들러를 등록하는 것이 좋음.
-  // 구조 변경 필요: startAiGame에서 Worker 생성 및 핸들러 등록.
-};
+//   // Worker 응답 핸들러는 startAiGame에서 한 번만 등록하거나, 여기서 등록하되 'once'를 쓰면 안됨(Worker는 계속 살아있음).
+//   // 하지만 Worker는 하나고 요청도 순차적이므로, on('message')를 여기서 등록하면 리스너가 중복될 수 있음.
+//   // 따라서 Worker 생성 시점에 핸들러를 등록하는 것이 좋음.
+//   // 구조 변경 필요: startAiGame에서 Worker 생성 및 핸들러 등록.
+// };
 
 // --- Server & Socket ---
 const broadcastLobby = () => io.emit('lobby_update', { roles, readyStatus, isGameStarted });
@@ -136,7 +136,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('start_ai_game', (difficulty) => {
-    roles = { 1: socket.id, 2: 'AI' };
+    // 이미 게임 중이면 무시
+    if (isGameStarted) return;
+
+    // P1은 요청한 소켓, P2는 'AI'
+    roles[1] = socket.id;
+    roles[2] = 'AI';
     readyStatus = { 1: true, 2: true };
     isGameStarted = true;
     gameState = JSON.parse(JSON.stringify(INITIAL_GAME_STATE));
@@ -145,88 +150,9 @@ io.on('connection', (socket) => {
 
     console.log(`[${new Date().toISOString()}] AI Game Started. Difficulty: ${difficulty}`);
 
-    // Worker 초기화
-    if (aiWorker) aiWorker.terminate();
-    const workerPath = path.resolve(__dirname, 'server/aiWorker.cjs');
-    aiWorker = new Worker(workerPath);
-
-    aiWorker.on('message', (msg) => {
-      console.log('Received msg from Worker:', msg);
-      if (msg.type === 'log') {
-        console.log(msg.message);
-        return;
-      }
-      const { success, result, error } = msg;
-
-      console.log(`[${new Date().toISOString()}] AI Worker Result:`, success ? "Success" : error);
-      if (success) {
-        const bestMove = result.move;
-        const endTime = Date.now();
-        const elapsed = endTime - (global.aiStartTime || endTime);
-        const computeSeconds = Math.floor(elapsed / 1000);
-
-        // AI 연산 시간만큼 타이머 차감 (최소 딜레이 대기 시간 포함X, 순수 연산 시간만)
-        if (computeSeconds > 0) {
-          gameState.p2Time -= computeSeconds;
-          if (gameState.p2Time <= 0) {
-            gameState.p2Time = 0;
-            gameState.winner = 1;
-            gameState.winReason = 'timeout';
-            io.emit('update_state', gameState);
-            aiWorker.terminate();
-            return;
-          }
-        }
-
-        const minDelay = 1000; // AI 최소 딜레이
-        // 최소 딜레이 보장 (연산이 빨라도 minDelay만큼은 기다림)
-        const remainingDelay = Math.max(0, minDelay - elapsed);
-
-        setTimeout(() => {
-          if (gameState.winner) { aiWorker.terminate(); return; } // 기다리는 동안 게임 끝났으면 종료
-
-          if (bestMove) {
-            const newState = { ...gameState };
-
-            if (bestMove.type === 'move') {
-              newState.lastMove = { player: 2, x: gameState.p2.x, y: gameState.p2.y };
-              newState.lastWall = null;
-              newState.p2 = { ...gameState.p2, x: bestMove.x, y: bestMove.y };
-
-              if (newState.p2.y === 0) {
-                newState.winner = 2;
-                newState.winReason = 'goal';
-              }
-            } else if (bestMove.type === 'wall') {
-              const wall = { x: bestMove.x, y: bestMove.y, orientation: bestMove.orientation };
-              newState.walls.push(wall);
-              newState.p2.wallCount--;
-              newState.lastWall = wall;
-              newState.lastMove = null;
-            }
-
-            if (!newState.winner) {
-              newState.turn = 1;
-              newState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT);
-            }
-
-            gameState = newState;
-            io.emit('update_state', gameState);
-          } else {
-            console.log("AI has no moves available.");
-          }
-          aiWorker.terminate(); // 작업 완료 후 Worker 종료
-        }, remainingDelay);
-
-      } else {
-        console.error("AI Worker Error:", error);
-        aiWorker.terminate();
-      }
-    });
-
-    aiWorker.on('error', (err) => {
-      console.error("Worker Error:", err);
-    });
+    // [Server] 더 이상 Worker를 생성하거나 AI 연산을 수행하지 않음.
+    // 클라이언트가 계산해서 'game_action'을 보내주길 기다림.
+    // Worker 초기화 및 이벤트 핸들러 관련 코드 삭제
 
     io.emit('lobby_update', { roles, readyStatus, isGameStarted });
     io.emit('game_start', true);
@@ -280,10 +206,11 @@ io.on('connection', (socket) => {
     io.emit('update_state', gameState);
 
     // ★ [핵심] AI 턴이면 실행 (이제 isVsAI가 사라지지 않으므로 정상 작동)
-    if (gameState.isVsAI && gameState.turn === 2 && !gameState.winner) {
-      global.aiStartTime = Date.now(); // 시간 측정용 전역 변수
-      processAIMove();
-    }
+    // AI 연산은 클라이언트에서 수행하므로 서버에서는 processAIMove 호출하지 않음.
+    // if (gameState.isVsAI && gameState.turn === 2 && !gameState.winner) {
+    //   global.aiStartTime = Date.now(); // 시간 측정용 전역 변수
+    //   processAIMove();
+    // }
   });
 
   socket.on('resign_game', () => {
@@ -301,7 +228,8 @@ io.on('connection', (socket) => {
     if (roles[1] !== socket.id && roles[2] !== socket.id) return;
 
     if (gameInterval) clearInterval(gameInterval);
-    if (aiWorker) { aiWorker.terminate(); aiWorker = null; } // Worker 정리
+    // [Server] AI Worker 종료 로직 삭제 (클라이언트가 알아서 처리)
+    // if (aiWorker) { aiWorker.terminate(); aiWorker = null; } // Worker 정리
     isGameStarted = false;
 
     roles = { 1: null, 2: null };
@@ -311,6 +239,7 @@ io.on('connection', (socket) => {
 
     io.emit('game_start', false);
     broadcastLobby();
+    io.emit('update_state', gameState); // Reset client state
   });
 
   socket.on('disconnect', () => {

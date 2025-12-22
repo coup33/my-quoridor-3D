@@ -22,6 +22,10 @@ export const useGameState = (myRole) => {
     const [winner, setWinner] = useState(INITIAL_STATE.winner);
     const [winReason, setWinReason] = useState(INITIAL_STATE.winReason);
 
+    // AI 상태
+    const [isVsAI, setIsVsAI] = useState(false);
+    const [aiDifficulty, setAiDifficulty] = useState(1);
+
     // 타이머
     const [p1Time, setP1Time] = useState(INITIAL_STATE.p1Time);
     const [p2Time, setP2Time] = useState(INITIAL_STATE.p2Time);
@@ -90,7 +94,13 @@ export const useGameState = (myRole) => {
         setP1Time(state.p1Time);
         setP2Time(state.p2Time);
         setLastMove(state.lastMove);
+        setP2Time(state.p2Time);
+        setLastMove(state.lastMove);
         setLastWall(state.lastWall);
+
+        // AI 상태 동기화 (서버에서 보내준다고 가정)
+        if (state.isVsAI !== undefined) setIsVsAI(state.isVsAI);
+        if (state.aiDifficulty !== undefined) setAiDifficulty(state.aiDifficulty);
     }, [myRole]);
 
     /**
@@ -111,7 +121,12 @@ export const useGameState = (myRole) => {
         setLastMove(null);
         setLastWall(null);
         setPreviewWall(null);
+        setPreviewWall(null);
         setActionMode(null);
+        // AI 상태는 여기서 초기화하면 안 될 수도 있음 (재시작 시 유지?). 
+        // 하지만 INITIAL_STATE에는 없으므로 false로 초기화됨.
+        setIsVsAI(false);
+        setAiDifficulty(1);
     }, []);
 
     // 파생 상태
@@ -136,7 +151,10 @@ export const useGameState = (myRole) => {
         turn,
         walls,
         winner,
+        winner,
         winReason,
+        isVsAI,
+        aiDifficulty,
 
         // 타이머
         p1Time,

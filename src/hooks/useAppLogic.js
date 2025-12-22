@@ -3,6 +3,8 @@ import { useSocket } from './useSocket';
 import { useGameState } from './useGameState';
 import { useSound } from './useSound';
 import { useGameHandlers } from './useGameHandlers';
+import { useAI } from './useAI'; // [ClientAI]
+import { applyMove } from '../ai/aiCore'; // [ClientAI] applyMove import
 
 export const useAppLogic = () => {
     // 로비 상태
@@ -36,7 +38,7 @@ export const useAppLogic = () => {
     const gameState = useGameState(myRole);
     const {
         player1, player2, turn, walls, winner, winReason,
-        p1Time, p2Time, lastWall,
+        p1Time, p2Time, lastWall, isVsAI, aiDifficulty, // [ClientAI]
         actionMode, setActionMode, previewWall, setPreviewWall,
         syncWithServer, resetState, isMyTurn
     } = gameState;
@@ -106,8 +108,35 @@ export const useAppLogic = () => {
         emitAction, socketSelectRole, socketToggleReady, socketResetGame, socketResignGame, socketStartAiGame
     });
 
+    // [ClientAI] AI 통합
+    const fullGameState = useMemo(() => ({
+        p1: player1,
+        p2: player2,
+        walls,
+        turn,
+        p1Time,
+        p2Time,
+        winner,
+        winReason,
+        lastMove,
+        lastWall,
+        wallCount: { 1: player1.wallCount, 2: player2.wallCount } // aiCore에서 필요할 수도 있음 (직접 참조하긴 함)
+    }), [player1, player2, walls, turn, p1Time, p2Time, winner, winReason, lastMove, lastWall]);
+
+    const { isThinking } = useAI(fullGameState, isVsAI, aiDifficulty, (move) => {
+        // AI가 수를 두면 서버로 전송
+        // move: { type: 'move'|'wall', ... }
+
+        // 현재 상태에 AI의 수를 적용하여 새로운 상태 생성
+        const newState = applyMove(fullGameState, move);
+
+        // 서버로 전송 (마치 P2가 둔 것처럼)
+        emitAction(newState);
+    });
+
     return {
         state: {
+            isThinking, // AI 생각 중 표시용
             myRole, takenRoles, readyStatus, isGameStarted, showMenu, showResignConfirm,
             isMobileLayout, boardBounds,
             gameState,
