@@ -150,7 +150,14 @@ io.on('connection', (socket) => {
     const workerPath = path.resolve(__dirname, 'server/aiWorker.cjs');
     aiWorker = new Worker(workerPath);
 
-    aiWorker.on('message', ({ success, result, error }) => {
+    aiWorker.on('message', (msg) => {
+      console.log('Received msg from Worker:', msg);
+      if (msg.type === 'log') {
+        console.log(msg.message);
+        return;
+      }
+      const { success, result, error } = msg;
+
       console.log(`[${new Date().toISOString()}] AI Worker Result:`, success ? "Success" : error);
       if (success) {
         const bestMove = result.move;
