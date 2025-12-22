@@ -16,8 +16,9 @@ parentPort.on('message', ({ gameState, depth }) => {
         // 결과 전송
         parentPort.postMessage({ type: 'result', success: true, result });
     } catch (error) {
-        parentPort.postMessage({ type: 'log', message: `[Worker] Error: ${error.message}` });
+        const errorMsg = error.message || String(error);
+        parentPort.postMessage({ type: 'log', message: `[Worker] Error: ${errorMsg}` });
         // 에러 전송
-        parentPort.postMessage({ type: 'result', success: false, error: error.message });
+        parentPort.postMessage({ type: 'result', success: false, error: errorMsg });
     }
 });
