@@ -54,10 +54,10 @@ export const useCameraControl = ({ isMobileLayout, onBoardBoundsChange }) => {
                 // 모바일 레이아웃
                 const UI_TOP_HEIGHT = 80;
                 const UI_BOTTOM_HEIGHT = 130;
-                const PADDING = 20;
+                const PADDING = 5; // 패딩 축소 (20 -> 5)
 
                 const maxBoardWidth = screenWidth - PADDING * 2;
-                const targetPixelWidth = Math.min(maxBoardWidth, screenWidth * 0.95);
+                const targetPixelWidth = Math.min(maxBoardWidth, screenWidth * 0.98); // 0.95 -> 0.98 (거의 꽉 차게)
 
                 const fovRad = (FOV * Math.PI) / 180;
                 const halfFovTan = Math.tan(fovRad / 2);

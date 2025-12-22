@@ -149,7 +149,7 @@ export const getValidMovesForPawn = (pawnPos, opponentPos, walls) => {
 // --- Minimax AI Implementation ---
 
 // 상태 평가 함수
-const evaluateState = (state, player) => {
+const evaluateState = (state, player, prevPos = null) => {
     const p1Pos = state.p1;
     const p2Pos = state.p2;
 
@@ -178,6 +178,12 @@ const evaluateState = (state, player) => {
     // 내가 목표에 가까울수록, 상대가 멀수록 유리
     let score = (oppDist - myDist) * 10;
 
+    // [Loop 방지] 이전 위치로 돌아가는 경우 페널티 부여
+    // prevPos가 있고 현재 위치가 prevPos와 같다면 페널티
+    if (prevPos && p2Pos.x === prevPos.x && p2Pos.y === prevPos.y) {
+        score -= 0.5; // 동일 점수일 때만 피하도록 소수점 단위 페널티
+    }
+
     // 4. 벽 개수 가중치 (벽을 아끼면 가산점)
     // 너무 빨리 다 쓰는 것을 방지 (후반 도모)
     if (state.p2.wallCount > 0) {
@@ -185,8 +191,6 @@ const evaluateState = (state, player) => {
     }
 
     // 5. 플레이어 관점에 따른 점수 반환
-    // Maximize Player(P2, AI) 입장에서 계산된 점수이므로
-    // player === 2이면 그대로, player === 1이면 반대로 반환 (Minimax 구조상)
     return player === 2 ? score : -score;
 };
 
@@ -208,41 +212,31 @@ export const getPossibleMoves = (state, player) => {
 
     // 1. 이동 (Pawn Moves)
     const validPawnMoves = getValidMovesForPawn(myPos, oppPos, walls);
+    // 중앙 지향적 이동을 선호하기 위해 정렬 시 사용
     validPawnMoves.forEach(pos => {
         moves.push({ type: 'move', x: pos.x, y: pos.y });
     });
 
-    // 2. 벽 설치 (Wall Placements) - 휴리스틱 적용 (성능 최적화)
-    // 모든 위치를 다 보면 너무 느림.
-    // "상대방의 최단 경로" 주변, "내 위치" 주변 위주로 탐색하되 범위를 제한
+    // 2. 벽 설치 (Wall Placements)
     if (wallCount > 0) {
         const oppTargetY = player === 1 ? 0 : 8;
-
-        // 상대방 최단 경로 계산
         const oppPathData = getPathData(oppPos, oppTargetY, walls, myPos);
-
-        // 관심 좌표 집합 (Set으로 중복 제거)
         const candidates = new Set();
 
-        // 상대방 경로상 좌표들 추가 (경로 방해)
         if (oppPathData && oppPathData.fullPath) {
-            // [최적화] 전체 경로가 아닌 앞쪽 3~4칸만 고려하여 연산량 대폭 감소
             const lookAhead = 4;
             oppPathData.fullPath.slice(0, lookAhead).forEach(pos => {
                 candidates.add(`${pos.x},${pos.y}`);
-                // 경로 주변 1칸도 추가
                 [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dx, dy]) => {
                     candidates.add(`${pos.x + dx},${pos.y + dy}`);
                 });
             });
         }
 
-        // 내 주변 방어용 (선택적)
         [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dx, dy]) => {
             candidates.add(`${myPos.x + dx},${myPos.y + dy}`);
         });
 
-        // 후보 좌표들에 대해 가로/세로 벽 유효성 검사
         candidates.forEach(coord => {
             const [cx, cy] = coord.split(',').map(Number);
             if (inBoard(cx, cy)) {
@@ -255,21 +249,29 @@ export const getPossibleMoves = (state, player) => {
         });
     }
 
-    // [Move Ordering 최적화]
-    // 1. Pawn Moves: 목표 지점(Target Y)과의 거리가 가까운 순서로 정렬
+    // [Move Ordering 최적화] - 결정론적 정렬 적용
     const myTargetY = player === 1 ? 8 : 0;
+
+    // 이동: 목표 거리 -> 중앙 근접도 순(결정론적)
     const pawnMoves = moves.filter(m => m.type === 'move').sort((a, b) => {
         const distA = Math.abs(a.y - myTargetY);
         const distB = Math.abs(b.y - myTargetY);
-        return distA - distB; // 오름차순 (거리가 짧을수록 먼저 탐색)
+
+        if (distA !== distB) return distA - distB; // 1차: 목표 거리
+
+        // 2차: 중앙(x=4)과의 거리 (중앙 지향) - 왔다갔다 방지용 안정성 확보
+        const centerDistA = Math.abs(a.x - 4);
+        const centerDistB = Math.abs(b.x - 4);
+        if (centerDistA !== centerDistB) return centerDistA - centerDistB;
+
+        return 0;
     });
 
-    // 2. Wall Moves: 상대방 위치와 가까운 벽을 먼저 탐색 (공격적 수비)
-    // 맨해튼 거리 사용 (간단한 계산)
+    // 벽: 상대와의 거리 순
     const wallMoves = moves.filter(m => m.type === 'wall').sort((a, b) => {
         const distA = Math.abs(a.x - oppPos.x) + Math.abs(a.y - oppPos.y);
         const distB = Math.abs(b.x - oppPos.x) + Math.abs(b.y - oppPos.y);
-        return distA - distB; // 오름차순 (가까울수록 먼저 탐색)
+        return distA - distB;
     });
 
     return [...pawnMoves, ...wallMoves];
@@ -298,9 +300,10 @@ export const applyMove = (state, move) => {
 };
 
 // Minimax Algorithm
-export const minimax = (state, depth, alpha, beta, isMaximizingPlayer) => {
+export const minimax = (state, depth, alpha, beta, isMaximizingPlayer, prevPos = null) => {
     // 기저 조건: 깊이 도달 or 게임 종료
-    const score = evaluateState(state, 2); // 항상 AI(P2) 입장 점수
+    // 평가 함수에도 prevPos 전달
+    const score = evaluateState(state, 2, prevPos); // 항상 AI(P2) 입장 점수
     if (depth === 0 || score > 5000 || score < -5000) {
         return { score };
     }
@@ -314,7 +317,8 @@ export const minimax = (state, depth, alpha, beta, isMaximizingPlayer) => {
 
         for (let move of possibleMoves) {
             const newState = applyMove(state, move);
-            const evalResult = minimax(newState, depth - 1, alpha, beta, false);
+            // 재귀 호출 시 prevPos 전달 (평가는 리프 노드에서 이루어지므로 계속 전달해야 함)
+            const evalResult = minimax(newState, depth - 1, alpha, beta, false, prevPos);
 
             if (evalResult.score > maxEval) {
                 maxEval = evalResult.score;
@@ -330,7 +334,7 @@ export const minimax = (state, depth, alpha, beta, isMaximizingPlayer) => {
 
         for (let move of possibleMoves) {
             const newState = applyMove(state, move);
-            const evalResult = minimax(newState, depth - 1, alpha, beta, true);
+            const evalResult = minimax(newState, depth - 1, alpha, beta, true, prevPos);
 
             if (evalResult.score < minEval) {
                 minEval = evalResult.score;

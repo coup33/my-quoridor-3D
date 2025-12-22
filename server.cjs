@@ -2,10 +2,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-// const { Worker } = require('worker_threads'); // Worker 관련 코드 삭제
-// const path = require('path'); // Worker 관련 코드 삭제
-// const { minimax } = require('./server/aiCore.cjs'); // Worker에서 사용하므로 메인 스레드에선 제거 가능하지만, 혹시 모르니 주석 처리 or 제거
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -50,32 +46,7 @@ let roles = { 1: null, 2: null };
 let readyStatus = { 1: false, 2: false };
 let isGameStarted = false;
 let gameInterval = null;
-// let aiWorker = null; // Persistent Worker Instance - Worker 관련 코드 삭제
 
-// const processAIMove = () => { // Worker 관련 코드 삭제
-//   if (gameState.winner || !isGameStarted || gameState.turn !== 2) return;
-//   if (!aiWorker) return; // Worker가 없으면 실행 불가
-
-//   const difficulty = gameState.aiDifficulty;
-//   let depth = 1;
-
-//   // 난이도별 Depth 설정
-//   if (difficulty === 1) depth = 1;
-//   else if (difficulty === 2) depth = 2;
-//   else if (difficulty === 3) depth = 3;
-//   else if (difficulty === 4) depth = 4;
-
-//   const startTime = Date.now();
-//   console.log(`[${new Date().toISOString()}] AI Thinking... Depth: ${depth}`);
-
-//   // Worker에게 작업 지시
-//   aiWorker.postMessage({ gameState, depth });
-
-//   // Worker 응답 핸들러는 startAiGame에서 한 번만 등록하거나, 여기서 등록하되 'once'를 쓰면 안됨(Worker는 계속 살아있음).
-//   // 하지만 Worker는 하나고 요청도 순차적이므로, on('message')를 여기서 등록하면 리스너가 중복될 수 있음.
-//   // 따라서 Worker 생성 시점에 핸들러를 등록하는 것이 좋음.
-//   // 구조 변경 필요: startAiGame에서 Worker 생성 및 핸들러 등록.
-// };
 
 // --- Server & Socket ---
 const broadcastLobby = () => io.emit('lobby_update', { roles, readyStatus, isGameStarted });

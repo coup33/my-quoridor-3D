@@ -102,13 +102,22 @@ function App() {
                 <div className="mobile-status-left">
                   {topBadge}
                 </div>
+
+                {/* 중앙: 상대방 정보 (모바일) */}
                 <div className="mobile-status-center">
-                  {turnIndicator}
+                  <PlayerInfo
+                    playerNumber={isSpectator ? 1 : opponentPlayerNumber}
+                    wallCount={isSpectator ? player1.wallCount : opponentWallCount}
+                    isActive={isSpectator ? turn === 1 : (myRole ? turn !== myRole : turn === 2)}
+                    className="mobile-opponent-info"
+                  />
                 </div>
+
                 <div className="mobile-status-right">
                   {resignButton}
                 </div>
               </div>
+
               <TimeBar time={topTime} />
             </div>
 
@@ -136,11 +145,13 @@ function App() {
             {/* 하단 타임바 영역 (모바일) */}
             <div className="mobile-bottom-bar">
               <TimeBar time={bottomTime} />
-              <div className="mobile-my-controls">
+              <div className={`mobile-my-controls ${(isSpectator ? turn === 2 : (turn === myRole)) ? 'active' : ''}`}>
+
+                {/* 관전 모드일 때는 하단에 P2(Black) 정보를 보여줌 */}
                 <PlayerInfo
-                  playerNumber={myPlayerNumber}
-                  wallCount={myWallCount}
-                  isActive={turn === myRole}
+                  playerNumber={isSpectator ? 2 : myPlayerNumber}
+                  wallCount={isSpectator ? player2.wallCount : myWallCount}
+                  isActive={false} // 부모 active 사용
                   className="mobile-my-info"
                 />
                 {myRole && (
@@ -163,19 +174,20 @@ function App() {
             </div>
           </div>
 
-          {/* 플로팅 UI - 좌측 (데스크탑) */}
-          <div className="floating-panel floating-left desktop-only">
+          {/* 왼쪽: 상대방 벽 패널 (데스크탑) */}
+          {/* 관전 모드일 때: P1 (White) 정보 표시 (왼쪽) */}
+          <div className={`floating-panel floating-left desktop-only ${(isSpectator ? turn === 1 : !isMyTurn) ? 'active' : ''}`}>
             <PlayerInfo
-              playerNumber={opponentPlayerNumber}
-              wallCount={opponentWallCount}
-              isActive={myRole ? turn !== myRole : turn === 2}
+              playerNumber={isSpectator ? 1 : opponentPlayerNumber}
+              wallCount={isSpectator ? player1.wallCount : opponentWallCount}
+              // isActive는 CSS에서 부모 .active로 처리
               className="floating-player-info"
             />
           </div>
 
           {/* 플로팅 UI - 상단 (데스크탑) */}
           <div className="floating-timebar-top desktop-only">
-            <div className="floating-turn-indicator">{turnIndicator}</div>
+            {winner && <div className="floating-turn-indicator">{turnIndicator}</div>}
             <TimeBar time={topTime} />
           </div>
 
@@ -185,13 +197,13 @@ function App() {
           </div>
 
           {/* 플로팅 UI - 우측 (데스크탑) */}
-          <div className="floating-panel floating-right desktop-only">
+          <div className={`floating-panel floating-right desktop-only ${(isSpectator ? turn === 2 : isMyTurn) ? 'active' : ''}`}>
             {myRole ? (
               <>
                 <PlayerInfo
                   playerNumber={myPlayerNumber}
                   wallCount={myWallCount}
-                  isActive={turn === myRole}
+                  // isActive 제거 (부모 active로 대체)
                   className="floating-player-info my-info"
                 />
                 <ActionButtons
@@ -204,10 +216,11 @@ function App() {
                 />
               </>
             ) : (
+              // 관전 모드일 때: P2 (Black) 정보 표시 (오른쪽)
               <PlayerInfo
-                playerNumber={1}
-                wallCount={player1.wallCount}
-                isActive={turn === 1}
+                playerNumber={isSpectator ? 2 : 1}
+                wallCount={isSpectator ? player2.wallCount : player1.wallCount}
+                // isActive 제거
                 className="floating-player-info"
               />
             )}

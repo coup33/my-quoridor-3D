@@ -53,6 +53,8 @@ export const useAI = (gameState, isVsAI, aiDifficulty, onAIMove) => {
 
     // 이번 턴에 AI가 이미 요청을 보냈는지 추적
     const lastAiTurn = useRef(null);
+    // AI의 이전 위치 추적 (왔다갔다 방지용)
+    const prevAiPosRef = useRef(null);
 
     // AI 턴 감지 및 연산 요청
     useEffect(() => {
@@ -67,19 +69,27 @@ export const useAI = (gameState, isVsAI, aiDifficulty, onAIMove) => {
         if (isThinking) return;
 
         // 이미 이번 턴(P2의 현재 상태)에 대해 AI를 돌렸다면 스킵
-        // 상태가 변하지 않았는데 또 돌리면 안됨.
-        // 단순히 turn 번호만 보면 안되고, lastMove가 바뀌었는지 등을 봐야 함.
-        // 하지만 간단하게는 "Turn 2가 된 직후 한 번만" 실행하면 됨.
         if (lastAiTurn.current === gameState.turn) return;
 
         const depth = AI_DIFFICULTY_DEPTH[aiDifficulty] || 2;
         setIsThinking(true);
         lastAiTurn.current = gameState.turn; // 이번 턴 처리 시작 표시
 
+        // 현재 AI 위치 (이동 전)
+        const currentAiPos = { ...gameState.p2 };
+
         // 딜레이를 주어 UI가 먼저 렌더링되게 함 (AI가 너무 빠르면 턴 전환이 안 보임)
         setTimeout(() => {
             if (workerRef.current) {
-                workerRef.current.postMessage({ gameState, depth });
+                // 이전 위치 정보도 함께 전달
+                workerRef.current.postMessage({
+                    gameState,
+                    depth,
+                    prevPos: prevAiPosRef.current
+                });
+
+                // 요청 후 현재 위치를 '이전 위치'로 저장 (다음 턴에 사용)
+                prevAiPosRef.current = currentAiPos;
             }
         }, 500);
 

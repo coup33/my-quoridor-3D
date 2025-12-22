@@ -16,16 +16,8 @@ const TurnIndicator = ({ turn, winner, myRole, isSpectator }) => {
         return <span className="win-text">{resultTitle}</span>;
     }
 
-    // 턴 표시
-    const dotClass = turn === 1 ? 'dot-white' : 'dot-black';
-    const turnText = turn === 1 ? '백색 턴' : '흑색 턴';
-
-    return (
-        <div className="turn-indicator-box">
-            <div className={`turn-dot ${dotClass}`}></div>
-            <span className="turn-text">{turnText}</span>
-        </div>
-    );
+    // 턴 표시 (제거 요청: 플레이어 정보창 강조로 대체)
+    return null;
 };
 
 export default React.memo(TurnIndicator);

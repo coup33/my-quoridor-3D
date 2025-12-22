@@ -23,10 +23,12 @@ export const useAppLogic = () => {
 
     useEffect(() => {
         const checkMobileLayout = () => {
+            const isSmallScreen = window.innerWidth <= 768;
             const boardSize = Math.min(window.innerWidth, window.innerHeight);
             const leftPanelLeft = window.innerWidth / 2 - boardSize / 2 - 100;
             const titleRight = 80;
-            setIsMobileLayout(leftPanelLeft < titleRight);
+            const isOverlap = leftPanelLeft < titleRight;
+            setIsMobileLayout(isSmallScreen || isOverlap);
         };
 
         checkMobileLayout();
