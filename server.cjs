@@ -154,28 +154,28 @@ io.on('connection', (socket) => {
       console.log(`[${new Date().toISOString()}] AI Worker Result:`, success ? "Success" : error);
       if (success) {
         const bestMove = result.move;
+        const endTime = Date.now();
+        const elapsed = endTime - startTime;
+        const computeSeconds = Math.floor(elapsed / 1000);
 
-        // 여기에 로직 복붙보다는, 별도 처리 함수(handleAIMoveResult)를 만드는 게 좋음.
-        // 하지만 여기서는 인라인으로 처리하되, processAIMove의 minDelay 로직을 가져와야 함.
-        // Worker는 순수 계산만 하고, '결과 받음 -> 딜레이 -> 적용' 흐름.
+        // AI 연산 시간만큼 타이머 차감 (최소 딜레이 대기 시간 포함X, 순수 연산 시간만)
+        if (computeSeconds > 0) {
+          gameState.p2Time -= computeSeconds;
+          if (gameState.p2Time <= 0) {
+            gameState.p2Time = 0;
+            gameState.winner = 1;
+            gameState.winReason = 'timeout';
+            io.emit('update_state', gameState);
+            aiWorker.terminate();
+            return;
+          }
+        }
 
-        // 간단하게 하기 위해:
-        // move 적용 로직을 processAIMove 내부가 아닌 여기서 처리.
-        // processAIMove는 단순히 postMessage만 함.
-
-        const minDelay = 1000;
-        // AI가 언제 시작했는지 알아야 함. processAIMove 호출 시각을 기록해야 함.
-        // 전역 변수 aiStartTime 사용 필요.
-
-        const now = Date.now();
-        // aiStartTime이 없으므로 대략적으로 현재 시각 기준 0초 딜레이 or 고정 1초
-        // 더 정확히 하려면 processAIMove에서 aiStartTime = Date.now() 하고 여기서 참조.
-
-        const elapsed = now - (global.aiStartTime || now);
+        // 최소 딜레이 보장 (연산이 빨라도 minDelay만큼은 기다림)
         const remainingDelay = Math.max(0, minDelay - elapsed);
 
         setTimeout(() => {
-          if (!isGameStarted || gameState.winner) return;
+          if (gameState.winner) { aiWorker.terminate(); return; } // 기다리는 동안 게임 끝났으면 종료
 
           if (bestMove) {
             const newState = { ...gameState };
@@ -204,8 +204,15 @@ io.on('connection', (socket) => {
 
             gameState = newState;
             io.emit('update_state', gameState);
+          } else {
+            console.log("AI has no moves available.");
           }
+          aiWorker.terminate(); // 작업 완료 후 Worker 종료
         }, remainingDelay);
+
+      } else {
+        console.error("AI Worker Error:", error);
+        aiWorker.terminate();
       }
     });
 
