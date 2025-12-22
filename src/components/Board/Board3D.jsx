@@ -232,7 +232,9 @@ const Board3D = ({
                 const distanceZ = BOARD_NEAR_Z - CAMERA_Z;
 
                 // 보드가 targetPixelWidth로 보이려면 필요한 카메라 거리
-                const requiredDistance = (BOARD_WIDTH / (2 * halfFovTan)) * (screenWidth / targetPixelWidth);
+                // Vertical FOV 기준이므로 화면 높이(screenHeight)를 사용하여 수평 시야각을 계산해야 함
+                // distance = (BOARD_WIDTH * screenHeight) / (2 * targetPixelWidth * halfFovTan)
+                const requiredDistance = (BOARD_WIDTH / (2 * halfFovTan)) * (screenHeight / targetPixelWidth);
 
                 // 카메라 Y 높이 계산 (피타고라스)
                 let cameraY = Math.sqrt(Math.max(requiredDistance * requiredDistance - distanceZ * distanceZ, 100));

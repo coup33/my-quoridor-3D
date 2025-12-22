@@ -455,14 +455,16 @@
 }
 
 .mobile-mode .mobile-my-controls {
-    width: 100%;
+    width: 95%;
+    /* 타임바와 동일하게 */
+    max-width: 500px;
+    /* 타임바와 동일한 최대 너비 */
     display: flex;
     justify-content: space-between;
     /* 양 끝 정렬 */
     align-items: center;
     background: rgba(20, 20, 35, 0.85);
     padding: 8px 24px;
-    /* 패딩을 늘려 너무 가장자리에 붙지 않게 함 */
     border-radius: 12px;
     border: 1px solid rgba(100, 100, 150, 0.3);
     box-sizing: border-box;
