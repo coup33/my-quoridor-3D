@@ -162,7 +162,7 @@ io.on('connection', (socket) => {
       if (success) {
         const bestMove = result.move;
         const endTime = Date.now();
-        const elapsed = endTime - startTime;
+        const elapsed = endTime - (global.aiStartTime || endTime);
         const computeSeconds = Math.floor(elapsed / 1000);
 
         // AI 연산 시간만큼 타이머 차감 (최소 딜레이 대기 시간 포함X, 순수 연산 시간만)
