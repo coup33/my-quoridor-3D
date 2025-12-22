@@ -2,7 +2,9 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { minimax } = require('./server/aiCore.cjs');
+const { Worker } = require('worker_threads');
+const path = require('path');
+// const { minimax } = require('./server/aiCore.cjs'); // Worker에서 사용하므로 메인 스레드에선 제거 가능하지만, 혹시 모르니 주석 처리 or 제거
 
 const app = express();
 app.use(cors());
@@ -45,79 +47,99 @@ let gameInterval = null;
 
 const processAIMove = () => {
   if (gameState.winner) return;
+  if (!isGameStarted || gameState.turn !== 2) return;
 
-  // 비동기 처럼 보이게 하여 서버 블로킹 최소화 느낌 주기 (실제 계산은 동기)
-  setTimeout(() => {
-    if (gameState.winner || !isGameStarted || gameState.turn !== 2) return;
+  const difficulty = gameState.aiDifficulty;
+  let depth = 1;
 
-    const difficulty = gameState.aiDifficulty;
-    let depth = 1;
+  // 난이도별 Depth 설정
+  if (difficulty === 1) depth = 1;      // Easy
+  else if (difficulty === 2) depth = 2; // Medium
+  else if (difficulty === 3) depth = 3; // Hard
+  else if (difficulty === 4) depth = 4; // Expert
 
-    // 난이도별 Depth 설정
-    if (difficulty === 1) depth = 1;      // Easy: 바로 앞만 봄 (Greedy)
-    else if (difficulty === 2) depth = 2; // Medium: 2수 앞 (내 공격 + 상대 방어)
-    else if (difficulty === 3) depth = 3; // Hard: 3수 앞
-    else if (difficulty === 4) depth = 4; // Expert: 4수 앞 (깊은 수읽기)
+  const startTime = Date.now();
+  const minDelay = 1000; // AI가 너무 빨리 두는 것을 방지하기 위한 최소 딜레이 (1초)
 
-    // AI 계산 시작
-    // console.log(`AI Thinking... Difficulty: ${difficulty}, Depth: ${depth}`);
+  // Worker 생성 및 실행
+  const workerPath = path.resolve(__dirname, 'server/aiWorker.cjs');
+  const worker = new Worker(workerPath);
 
-    // 첫 수는 오프닝 라이브러리처럼 중앙 선점 유도 (선택적)
+  worker.postMessage({ gameState, depth });
 
-    const startTime = Date.now();
-    const result = minimax(gameState, depth, -Infinity, Infinity, true);
-    const endTime = Date.now();
+  worker.on('message', ({ success, result, error }) => {
+    if (success) {
+      const bestMove = result.move;
+      const endTime = Date.now();
+      const elapsed = endTime - startTime;
+      const computeSeconds = Math.floor(elapsed / 1000);
 
-    const computeSeconds = Math.floor((endTime - startTime) / 1000);
-    if (computeSeconds > 0) {
-      gameState.p2Time -= computeSeconds;
-      if (gameState.p2Time <= 0) {
-        gameState.p2Time = 0;
-        gameState.winner = 1;
-        gameState.winReason = 'timeout';
-        io.emit('update_state', gameState);
-        return;
-      }
-    }
-
-    const bestMove = result.move;
-
-    if (bestMove) {
-      const newState = { ...gameState };
-
-      if (bestMove.type === 'move') {
-        newState.lastMove = { player: 2, x: gameState.p2.x, y: gameState.p2.y };
-        newState.lastWall = null;
-        newState.p2 = { ...gameState.p2, x: bestMove.x, y: bestMove.y };
-
-        // 승리 체크
-        if (newState.p2.y === 0) {
-          newState.winner = 2;
-          newState.winReason = 'goal';
+      // AI 연산 시간만큼 타이머 차감 (최소 딜레이 대기 시간 포함X, 순수 연산 시간만)
+      if (computeSeconds > 0) {
+        gameState.p2Time -= computeSeconds;
+        if (gameState.p2Time <= 0) {
+          gameState.p2Time = 0;
+          gameState.winner = 1;
+          gameState.winReason = 'timeout';
+          io.emit('update_state', gameState);
+          worker.terminate();
+          return;
         }
-      } else if (bestMove.type === 'wall') {
-        const wall = { x: bestMove.x, y: bestMove.y, orientation: bestMove.orientation };
-        newState.walls.push(wall);
-        newState.p2.wallCount--;
-        newState.lastWall = wall;
-        newState.lastMove = null;
       }
 
-      // 턴 넘김 및 시간 업데이트
-      if (!newState.winner) {
-        newState.turn = 1;
-        newState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT);
-      }
+      // 최소 딜레이 보장 (연산이 빨라도 minDelay만큼은 기다림)
+      const remainingDelay = Math.max(0, minDelay - elapsed);
 
-      // 전역 상태 업데이트
-      gameState = newState;
-      io.emit('update_state', gameState);
+      setTimeout(() => {
+        if (gameState.winner) { worker.terminate(); return; } // 기다리는 동안 게임 끝났으면 종료
+
+        if (bestMove) {
+          const newState = { ...gameState };
+
+          if (bestMove.type === 'move') {
+            newState.lastMove = { player: 2, x: gameState.p2.x, y: gameState.p2.y };
+            newState.lastWall = null;
+            newState.p2 = { ...gameState.p2, x: bestMove.x, y: bestMove.y };
+
+            if (newState.p2.y === 0) {
+              newState.winner = 2;
+              newState.winReason = 'goal';
+            }
+          } else if (bestMove.type === 'wall') {
+            const wall = { x: bestMove.x, y: bestMove.y, orientation: bestMove.orientation };
+            newState.walls.push(wall);
+            newState.p2.wallCount--;
+            newState.lastWall = wall;
+            newState.lastMove = null;
+          }
+
+          if (!newState.winner) {
+            newState.turn = 1;
+            newState.p2Time = Math.min(MAX_TIME, gameState.p2Time + INCREMENT);
+          }
+
+          gameState = newState;
+          io.emit('update_state', gameState);
+        } else {
+          console.log("AI has no moves available.");
+        }
+        worker.terminate(); // 작업 완료 후 Worker 종료
+      }, remainingDelay);
+
     } else {
-      // 움직일 수 없는 경우 (거의 없지만 방어 코드)
-      console.log("AI has no moves available.");
+      console.error("AI Worker Error:", error);
+      worker.terminate();
     }
+  });
 
-  }, 1500); // 1.5초 딜레이 (AI 타이머 동작 연출)
+  worker.on('error', (err) => {
+    console.error("Worker Thread Error:", err);
+    worker.terminate();
+  });
+
+  worker.on('exit', (code) => {
+    if (code !== 0) console.error(`Worker stopped with exit code ${code}`);
+  });
 };
 
 // --- Server & Socket ---
