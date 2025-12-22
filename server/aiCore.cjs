@@ -256,10 +256,21 @@ const getPossibleMoves = (state, player) => {
     }
 
     // [Move Ordering 최적화]
-    // '이동'을 먼저 탐색해야 Alpha-Beta 가지치기가 더 효율적으로 일어남 (점수 변화가 확실하므로)
-    // 같은 타입 내에서는 랜덤하게 섞어서 매번 다른 플레이 유도
-    const pawnMoves = moves.filter(m => m.type === 'move').sort(() => Math.random() - 0.5);
-    const wallMoves = moves.filter(m => m.type === 'wall').sort(() => Math.random() - 0.5);
+    // 1. Pawn Moves: 목표 지점(Target Y)과의 거리가 가까운 순서로 정렬
+    const myTargetY = player === 1 ? 8 : 0;
+    const pawnMoves = moves.filter(m => m.type === 'move').sort((a, b) => {
+        const distA = Math.abs(a.y - myTargetY);
+        const distB = Math.abs(b.y - myTargetY);
+        return distA - distB; // 오름차순 (거리가 짧을수록 먼저 탐색)
+    });
+
+    // 2. Wall Moves: 상대방 위치와 가까운 벽을 먼저 탐색 (공격적 수비)
+    // 맨해튼 거리 사용 (간단한 계산)
+    const wallMoves = moves.filter(m => m.type === 'wall').sort((a, b) => {
+        const distA = Math.abs(a.x - oppPos.x) + Math.abs(a.y - oppPos.y);
+        const distB = Math.abs(b.x - oppPos.x) + Math.abs(b.y - oppPos.y);
+        return distA - distB; // 오름차순 (가까울수록 먼저 탐색)
+    });
 
     return [...pawnMoves, ...wallMoves];
 };
