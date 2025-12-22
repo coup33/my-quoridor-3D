@@ -3,7 +3,7 @@
  * 리팩토링된 버전 - 3D 모드 전용, 모듈화된 컴포넌트와 훅 사용
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React from 'react';
 
 // 스타일은 main.jsx에서 index.css로 import됨
 
@@ -13,135 +13,27 @@ import { TimeBar, TurnIndicator, GameTitle, PlayerInfo, ActionButtons } from './
 import { LobbyOverlay } from './components/Lobby';
 import { GameOverModal, MenuModal, ResignConfirmModal } from './components/Modal';
 
-// 훅
-import { useSocket } from './hooks/useSocket';
-import { useGameState } from './hooks/useGameState';
-import { useSound } from './hooks/useSound';
-import { useGameHandlers } from './hooks/useGameHandlers';
+// 훅 (통합 로직)
+import { useAppLogic } from './hooks/useAppLogic';
 
 function App() {
-  // 로비 상태
-  const [myRole, setMyRole] = useState(null);
-  const [takenRoles, setTakenRoles] = useState({ 1: null, 2: null });
-  const [readyStatus, setReadyStatus] = useState({ 1: false, 2: false });
-  const [isGameStarted, setIsGameStarted] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [showResignConfirm, setShowResignConfirm] = useState(false);
+  // 모든 비즈니스 로직을 커스텀 훅으로 위임
+  const { state, actions } = useAppLogic();
 
-  // 모바일 레이아웃 감지
-  const [isMobileLayout, setIsMobileLayout] = useState(false);
-
-  // 보드 경계 정보 (모바일에서 상단 UI 위치 조정에 사용)
-  const [boardBounds, setBoardBounds] = useState({ topY: 0, width: 0, cameraY: 14 });
-
-  useEffect(() => {
-    const checkMobileLayout = () => {
-
-
-
-
-      const boardSize = Math.min(window.innerWidth, window.innerHeight);
-      const leftPanelLeft = window.innerWidth / 2 - boardSize / 2 - 100;
-      const titleRight = 80;
-      setIsMobileLayout(leftPanelLeft < titleRight);
-    };
-
-    checkMobileLayout();
-    window.addEventListener('resize', checkMobileLayout);
-    return () => window.removeEventListener('resize', checkMobileLayout);
-  }, []);
-
-  // 게임 상태 훅
-  const gameState = useGameState(myRole);
+  // 상태 구조 분해
   const {
-    player1, player2, turn, walls, winner, winReason,
-    p1Time, p2Time, lastWall,
-    actionMode, setActionMode, previewWall, setPreviewWall,
-    syncWithServer, resetState, isMyTurn
-  } = gameState;
+    myRole, takenRoles, readyStatus, isGameStarted, showMenu, showResignConfirm, isMobileLayout,
+    gameState: { player1, player2, turn, walls, lastWall, winner, winReason, actionMode, previewWall, isMyTurn },
+    derived: { isSpectator, isFlipped, topTime, bottomTime, currentPlayer, myPlayerNumber, opponentPlayerNumber, myWallCount, opponentWallCount }
+  } = state;
 
-  // 사운드 훅
-  const { playSound } = useSound();
-
-  // 소켓 핸들러
-  const socketHandlers = useMemo(() => ({
-    onLobbyUpdate: (data, socketId) => {
-      setTakenRoles(data.roles);
-      setReadyStatus(data.readyStatus);
-      setIsGameStarted(data.isGameStarted);
-
-      if (data.roles[1] !== socketId && data.roles[2] !== socketId) {
-        setMyRole(null);
-      } else {
-        if (data.roles[1] === socketId) setMyRole(1);
-        else if (data.roles[2] === socketId) setMyRole(2);
-      }
-    },
-    onGameStart: (started) => {
-      setIsGameStarted(started);
-      if (started) {
-        playSound('start');
-        resetState();
-        setShowMenu(false);
-      } else {
-        resetState();
-        setShowMenu(false);
-      }
-    },
-    onUpdateState: syncWithServer,
-    onInitState: syncWithServer
-  }), [playSound, resetState, syncWithServer]);
-
-  // 소켓 훅
+  // 액션 구조 분해
   const {
-    selectRole: socketSelectRole,
-    toggleReady: socketToggleReady,
-    emitAction,
-    resetGame: socketResetGame,
-    resignGame: socketResignGame,
-    startAiGame: socketStartAiGame
-  } = useSocket(socketHandlers);
-
-  // 파생 상태
-  const isSpectator = isGameStarted && myRole !== 1 && myRole !== 2;
-  const isFlipped = myRole === 1;
-  const topTime = isFlipped ? p2Time : p1Time;
-  const bottomTime = isFlipped ? p1Time : p2Time;
-  const currentPlayer = turn === 1 ? player1 : player2;
-
-  // 플레이어 정보 계산 (myRole 기준)
-  const myPlayerNumber = myRole || 1;
-  const opponentPlayerNumber = myRole === 1 ? 2 : myRole === 2 ? 1 : 2;
-  const myWallCount = myRole === 1 ? player1.wallCount : myRole === 2 ? player2.wallCount : player1.wallCount;
-  const opponentWallCount = myRole === 1 ? player2.wallCount : myRole === 2 ? player1.wallCount : player2.wallCount;
-
-  // 게임 핸들러 훅
-  const {
-    isMoveableCheck,
-    canPlaceWallCheck,
-    handleCellClick,
-    handleWallClick,
-    confirmWallPlacement,
-    handleSelectRole,
-    handleToggleReady,
-    handleStartAiGame,
-    handleLeaveRole,
-    handleResetGame,
-    openResignConfirm,
-    confirmResign,
-    cancelResign
-  } = useGameHandlers({
-    // 게임 상태
-    player1, player2, turn, walls, winner, isMyTurn, actionMode, previewWall,
-    currentPlayer,
-    opponentPlayer: turn === 1 ? player2 : player1,
-    isGameStarted, myRole,
-    isMobile: isMobileLayout,
-    // 상태 업데이트 함수
-    setPreviewWall, setActionMode, setMyRole, setShowMenu, setShowResignConfirm,
-    // 소켓 함수
-    emitAction, socketSelectRole, socketToggleReady, socketResetGame, socketResignGame, socketStartAiGame
-  });
+    setBoardBounds, setShowMenu: setShowMenuAction,
+    isMoveableCheck, canPlaceWallCheck, handleCellClick, handleWallClick, confirmWallPlacement,
+    handleSelectRole, handleToggleReady, handleStartAiGame, handleLeaveRole, handleResetGame,
+    openResignConfirm, confirmResign, cancelResign
+  } = actions;
 
   // 상단 배지
   const topBadge = !isGameStarted ? null : (
@@ -173,7 +65,7 @@ function App() {
 
       {/* 메뉴 버튼 */}
       {isGameStarted && !isSpectator && (
-        <button className="menu-float" onClick={() => setShowMenu(true)}>
+        <button className="menu-float" onClick={() => setShowMenuAction(true)}>
           MENU
         </button>
       )}
@@ -182,7 +74,7 @@ function App() {
       {showMenu && (
         <MenuModal
           onExit={handleResetGame}
-          onClose={() => setShowMenu(false)}
+          onClose={() => setShowMenuAction(false)}
         />
       )}
 
@@ -206,7 +98,6 @@ function App() {
           <div className="board-fullscreen-3d">
             {/* 상단 영역 (모바일) - 배지, 턴, 항복 + 타임바 */}
             <div className="mobile-top-bar">
-              {/* 상단 정보 행: 좌측-게임중/관전중, 중앙-턴표시, 우측-항복 */}
               <div className="mobile-status-row">
                 <div className="mobile-status-left">
                   {topBadge}
@@ -218,7 +109,6 @@ function App() {
                   {resignButton}
                 </div>
               </div>
-              {/* 상대 타임바 */}
               <TimeBar time={topTime} />
             </div>
 
@@ -257,14 +147,13 @@ function App() {
                   <ActionButtons
                     actionMode={actionMode}
                     onActionModeChange={(mode) => {
-                      setActionMode(mode);
-                      if (mode !== 'wall') setPreviewWall(null);
+                      actions.setActionMode(mode);
+                      if (mode !== 'wall') actions.setPreviewWall(null);
                     }}
                     isMyTurn={isMyTurn}
                     winner={winner}
                     wallCount={currentPlayer.wallCount}
                     className="mobile-action-buttons"
-                    // 모바일 벽 설치 확인용
                     previewWall={previewWall}
                     onConfirmWall={confirmWallPlacement}
                     isMobile={isMobileLayout}
@@ -307,7 +196,7 @@ function App() {
                 />
                 <ActionButtons
                   actionMode={actionMode}
-                  onActionModeChange={setActionMode}
+                  onActionModeChange={actions.setActionMode}
                   isMyTurn={isMyTurn}
                   winner={winner}
                   wallCount={currentPlayer.wallCount}

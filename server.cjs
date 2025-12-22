@@ -392,7 +392,22 @@ const processAIMove = () => {
 
     // 첫 수는 오프닝 라이브러리처럼 중앙 선점 유도 (선택적)
 
+    const startTime = Date.now();
     const result = minimax(gameState, depth, -Infinity, Infinity, true);
+    const endTime = Date.now();
+
+    const computeSeconds = Math.floor((endTime - startTime) / 1000);
+    if (computeSeconds > 0) {
+      gameState.p2Time -= computeSeconds;
+      if (gameState.p2Time <= 0) {
+        gameState.p2Time = 0;
+        gameState.winner = 1;
+        gameState.winReason = 'timeout';
+        io.emit('update_state', gameState);
+        return;
+      }
+    }
+
     const bestMove = result.move;
 
     if (bestMove) {
@@ -430,7 +445,7 @@ const processAIMove = () => {
       console.log("AI has no moves available.");
     }
 
-  }, 500); // 0.5초 딜레이로 "생각하는 척" 연출
+  }, 1500); // 1.5초 딜레이 (AI 타이머 동작 연출)
 };
 
 // --- Server & Socket ---
