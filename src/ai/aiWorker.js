@@ -1,14 +1,14 @@
 import { getBestMove } from './aiCore.js';
 
 self.onmessage = ({ data }) => {
-    const { gameState, depth, history, personality } = data;
+    const { gameState, depth } = data;
 
     try {
-        console.log(`[ClientWorker] AI Thinking... Depth: ${depth}`);
+        console.log(`[ClientWorker] AI Thinking... Max Depth: ${depth}`);
         const startTime = performance.now();
 
-        // Strategy Wrapper인 getBestMove 실행 (personality, history 전달)
-        const result = getBestMove(gameState, depth, history, personality);
+        // AI 계산 수행 (반복 심화 + 시간 관리)
+        const result = getBestMove(gameState, depth);
 
         const endTime = performance.now();
         console.log(`[ClientWorker] Finished in ${(endTime - startTime).toFixed(0)}ms`);
