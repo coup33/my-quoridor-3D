@@ -356,6 +356,12 @@ const evaluateState = (state, player) => {
     // 5. Wall Resources (벽 리소스)
     score += (state.p2.wallCount - state.p1.wallCount) * 3;
 
+    // 6. Progress Bonus (전진 보너스) - AI가 뒤로 가지 않도록
+    // p2의 y가 작을수록 (y=0 목표에 가까울수록) 보너스
+    // 최대 8점 (y=0일 때) ~ 0점 (y=8일 때)
+    const progressBonus = (8 - state.p2.y) * 2;
+    score += progressBonus;
+
     return player === 2 ? score : -score;
 };
 
