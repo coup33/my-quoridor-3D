@@ -209,7 +209,85 @@ export const getPossibleMoves = (state, player) => {
 };
 
 // ==========================================
-// 4. Evaluation & Minimax
+// 4. Advanced Heuristics (Optimized)
+// ==========================================
+
+// Trap Detection: 상대가 벽 1개로 내 경로를 크게 늘릴 수 있는지 체크
+// 최적화: 3x3 범위만 체크, 조기 종료
+const detectTrapRisk = (state, player) => {
+    const myPos = player === 2 ? state.p2 : state.p1;
+    const myTarget = player === 2 ? 0 : 8;
+    const oppWalls = player === 2 ? state.p1.wallCount : state.p2.wallCount;
+
+    if (oppWalls === 0) return 0;
+
+    const currentDist = getDistance(myPos, myTarget, state.walls);
+    if (currentDist === -1) return 0;
+
+    // 최적화: 3x3 범위만 체크 (25개 → 9개)
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const wx = myPos.x + dx;
+            const wy = myPos.y + dy;
+            if (wx < 0 || wx > 7 || wy < 0 || wy > 7) continue;
+
+            for (let ori of ['h', 'v']) {
+                if (isValidWall(wx, wy, ori, state.walls, state.p1, state.p2)) {
+                    const newWalls = [...state.walls, { x: wx, y: wy, orientation: ori }];
+                    const newDist = getDistance(myPos, myTarget, newWalls);
+                    if (newDist !== -1) {
+                        const increase = newDist - currentDist;
+                        // 최적화: 3칸 이상 증가 발견하면 즉시 반환
+                        if (increase >= 3) return increase;
+                    }
+                }
+            }
+        }
+    }
+
+    return 0;
+};
+
+// Attack Opportunity: 벽으로 상대를 3칸+ 늘릴 수 있는지 체크
+// 최적화: 3x3 범위, 최대 6개 벽만 체크, 조기 종료
+const findDoubleWallOpportunity = (state, player) => {
+    const myWalls = player === 2 ? state.p2.wallCount : state.p1.wallCount;
+    if (myWalls < 1) return 0;
+
+    const oppPos = player === 2 ? state.p1 : state.p2;
+    const oppTarget = player === 2 ? 8 : 0;
+    const baseDist = getDistance(oppPos, oppTarget, state.walls);
+    if (baseDist === -1 || baseDist <= 2) return 0;
+
+    // 최적화: 3x3 범위, 최대 6개만 체크
+    let checked = 0;
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const wx = oppPos.x + dx;
+            const wy = oppPos.y + dy;
+            if (wx < 0 || wx > 7 || wy < 0 || wy > 7) continue;
+
+            for (let ori of ['h', 'v']) {
+                if (checked >= 6) return 0; // 최대 6개만
+
+                if (isValidWall(wx, wy, ori, state.walls, state.p1, state.p2)) {
+                    checked++;
+                    const walls1 = [...state.walls, { x: wx, y: wy, orientation: ori }];
+                    const dist1 = getDistance(oppPos, oppTarget, walls1);
+                    if (dist1 !== -1 && dist1 - baseDist >= 3) {
+                        // 최적화: 3칸 이상 발견하면 즉시 반환
+                        return dist1 - baseDist;
+                    }
+                }
+            }
+        }
+    }
+
+    return 0;
+};
+
+// ==========================================
+// 5. State Manipulation
 // ==========================================
 
 export const cloneGameState = (state) => ({
@@ -239,7 +317,10 @@ export const applyMove = (state, move) => {
     return newState;
 };
 
-// 평가 함수: 승리 중심
+// ==========================================
+// 6. Evaluation Function (Advanced)
+// ==========================================
+
 const evaluateState = (state, player) => {
     const p1Pos = state.p1;
     const p2Pos = state.p2;
@@ -248,23 +329,39 @@ const evaluateState = (state, player) => {
     const p1Dist = getDistance(p1Pos, 8, walls);
     const p2Dist = getDistance(p2Pos, 0, walls);
 
+    // 승패 확정
     if (p2Dist === 0) return 10000;
     if (p1Dist === 0) return -10000;
     if (p2Dist === -1) return -9000;
     if (p1Dist === -1) return 9000;
 
-    // 내 승리(전진)를 최우선시: 가중치 20
-    // 상대 방해: 가중치 10
-    // 벽 아끼기: 가중치 5
-    let score = (1000 - p2Dist * 20) + (p1Dist * 10);
-    score += state.p2.wallCount * 5;
+    // 1. Race Score (레이스 점수) - 최우선
+    // 거리 차이 1칸 = 50점
+    const raceDiff = p1Dist - p2Dist;
+    let score = raceDiff * 50;
+
+    // 2. Turn Advantage (선공 보정)
+    if (state.turn === 2) score += 25;
+
+    // 3. Trap Risk (갇힘 위험도)
+    // 상대가 벽 1개로 내 경로를 3칸+ 늘릴 수 있으면 페널티
+    const myTrapRisk = detectTrapRisk(state, 2);
+    if (myTrapRisk >= 3) score -= myTrapRisk * 15;
+
+    // 4. Attack Opportunity (공격 기회)
+    // 내가 벽으로 상대를 3칸+ 늘릴 수 있으면 보너스
+    const attackPotential = findDoubleWallOpportunity(state, 2);
+    if (attackPotential >= 3) score += attackPotential * 10;
+
+    // 5. Wall Resources (벽 리소스)
+    score += (state.p2.wallCount - state.p1.wallCount) * 3;
 
     return player === 2 ? score : -score;
 };
 
 // 시간 초과 체크용 변수 (모듈 수준)
 let searchStartTime = 0;
-let timeLimit = 3000; // 3초
+let timeLimit = 2000; // 2초
 let isTimeout = false;
 
 const checkTimeout = () => {
